@@ -19,6 +19,23 @@ class _DashboardState extends State<Dashboard> {
     Expense(id: '3', label: 'Internet and Phone', fixedAmount: 163.85, tags: ['Fixed', 'Utility'], date: DateTime(2026, 4, 11)),
   ];
 
+  final List<Expense> _fixedExpenseTemplates = [
+    Expense(
+      id: "template_rent",
+      label: "Rent",
+      fixedAmount: 1100.00,
+      date: DateTime.now(),
+      tags: ["FIXED", "HOUSING"],
+    ),
+    Expense(
+      id: "template_internet",
+      label: "Internet and Phone",
+      fixedAmount: 163.85,
+      date: DateTime.now(),
+      tags: ["FIXED", "UTILITY"],
+    ),
+  ];
+
   List<Expense> getExpensesForMonth(DateTime month)
   {
     return allExpenses.where((e) =>
@@ -26,10 +43,52 @@ class _DashboardState extends State<Dashboard> {
     ).toList();
   }
   
+  void _generateFixedExpensesForMonth(DateTime targetDatetime)
+  {
+    bool alreadyGenerated = allExpenses.any((e) => 
+      e.date.year == targetDatetime.year &&
+      e.date.month == targetDatetime.month &&
+      e.tags.contains("FIXED")
+    );
+
+    if (alreadyGenerated) return;
+
+    setState(() {
+      for (var template in _fixedExpenseTemplates) {
+        allExpenses.add(
+          Expense(id: '${template.id}_${targetDatetime.millisecondsSinceEpoch}',
+          label: template.label,
+          fixedAmount: template.fixedAmount,
+          variableAmount: 0.0,
+          date: DateTime(targetDatetime.year, targetDatetime.month, 1),
+          tags: List.from(template.tags),
+          )
+        );
+      }
+    });
+  }
   double get totalIncome => _workIncome * 2;
   double get totalOut => allExpenses.fold(0, (sum, item) => sum + item.total);
   double get cashFlow => totalIncome - totalOut;
 
+  @override
+  void initState() {
+    super.initState();
+
+    _generateFixedExpensesForMonth(DateTime(2026, 2));
+    _generateFixedExpensesForMonth(DateTime(2026, 3));
+
+    allExpenses.add(
+      Expense(
+        id: 'manual_1',
+        label: 'Date Night',
+        fixedAmount: 0.0,
+        variableAmount: 120.50,
+        date: DateTime(2026, 3, 14), // Happened mid-March
+        tags: ['VARIABLE', 'LEISURE'],
+      )
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,9 +139,9 @@ class _DashboardState extends State<Dashboard> {
             Expanded(
               child: ListView(
                 children: <Widget>[
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: true),
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: true),
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: false),
                 ],
               ),
             ),
@@ -181,7 +240,7 @@ class _DashboardState extends State<Dashboard> {
       ],
     );
   }
-  Widget _buildExpenseCard(String title, double amount, List<String> tags, {required bool isLocked}) {
+  Widget _buildExpenseCard(String title, double amount, List<String> tags, DateTime date, {required bool isLocked}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -206,6 +265,10 @@ class _DashboardState extends State<Dashboard> {
                 const SizedBox(height: 4,),
 
                 Text("\$${amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, color: Colors.white),),
+                
+                const SizedBox(height: 8,),
+                
+                Text(date.toString()),
                 
                 const SizedBox(height: 8,),
                 

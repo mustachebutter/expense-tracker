@@ -11,7 +11,7 @@ class Dashboard extends StatefulWidget {
 }
 
 class _DashboardState extends State<Dashboard> {
-  final double _monthlyIncome = (2908.31 * 2);
+  final double _workIncome = 2908.31;
 
   List<Expense> allExpenses = [
     Expense(id: '1', label: 'Rent', fixedAmount: 1100, tags: ['Fixed', 'Housing'], date: DateTime(2026, 4, 11)),
@@ -25,9 +25,10 @@ class _DashboardState extends State<Dashboard> {
       e.date.month == month.month && e.date.year == month.year
     ).toList();
   }
-
+  
+  double get totalIncome => _workIncome * 2;
   double get totalOut => allExpenses.fold(0, (sum, item) => sum + item.total);
-  double get cashFlow => _monthlyIncome - totalOut;
+  double get cashFlow => totalIncome - totalOut;
 
   @override
   Widget build(BuildContext context) {
@@ -36,56 +37,121 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text("Butters' Cash Flow Tracker"),
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: cashFlow >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _statTile("Income", "\$${_monthlyIncome.toStringAsFixed(2)}"),
-                _statTile("Expenses", "\$${totalOut.toStringAsFixed(2)}"),
-                _statTile("Cash Flow", "\$${cashFlow.toStringAsFixed(2)}", isBold: true),
+      // body: ListView.builder(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                _buildSummaryStat("INCOME", "\$${totalIncome.toStringAsFixed(2)}"),
+                const SizedBox(width: 15,),
+                _buildSummaryStat("EXPENSES", "\$${totalOut.toStringAsFixed(2)}"),
+                const SizedBox(width: 15,),
+                _buildSummaryStat("NET FLOW", "\$${cashFlow.toStringAsFixed(2)}"),
               ],
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: allExpenses.length,
-              itemBuilder: (context, index) {
-                final item = allExpenses[index];
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: ListTile(
-                    title: Text(item.label),
-                    subtitle: Wrap(
-                      spacing: 5,
-                      children: item.tags.map((t) => Chip(label: Text(t), visualDensity: VisualDensity.compact,)).toList()
-                    ),
-                    trailing: SizedBox(
-                      width: 100,
-                      child: TextFormField(
-                        initialValue: item.variableAmount.toString(),
-                        decoration: const InputDecoration(prefixText: '\$'),
-                        keyboardType: TextInputType.number,
-                        onChanged: (val) {
-                          setState(() {
-                            item.variableAmount = double.tryParse(val) ?? 0;
-                          });
-                        },
-                      ),
-                    )
+            
+            const SizedBox(height: 20,),
+            
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A24),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.greenAccent.withOpacity(0.5)),
+              ),
+              child: Column(
+                children: <Widget>[
+                  const Text("April 2026", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),),
+                  const SizedBox(height: 8,),
+                  Text(
+                    "Net Cash Flow: +\$${cashFlow.toStringAsFixed(2)}",
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.greenAccent)
                   ),
-                );
-              }
+                ],
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 20),
+            
+            Expanded(
+              child: ListView(
+                children: <Widget>[
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
+                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], isLocked: true),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+      //   itemCount: 12,
+      //   itemBuilder: (context, index) {
+      //     DateTime displayMonth = DateTime(2026, 4 - index);
+      //     List<Expense> monthlyList = getExpensesForMonth(displayMonth);
+      //     double monthlyTotal = monthlyList.fold(0, (sum, e) => sum + e.total);
+
+      //     return ExpansionTile( 
+      //       title: Text(DateFormat("MMMM yyyy").format(displayMonth)),
+      //       subtitle: Text("Flow: \$${(_workIncome - monthlyTotal).toStringAsFixed(2)}"),
+      //       children: monthlyList.map((expense) => Card(
+      //         child: ListTile( 
+      //           title: Text(expense.label, style: const TextStyle(fontWeight: FontWeight.bold),),
+      //           subtitle: Column(
+      //             crossAxisAlignment: CrossAxisAlignment.start,
+      //             children: [
+      //               Text(
+      //                 "\$${expense.total.toStringAsFixed(2)}",
+      //                 style: const TextStyle(color: Colors.black87, fontSize: 16)
+      //               ),
+
+      //               const SizedBox(height: 6,),
+                    
+      //               Wrap(
+      //                 spacing: 4,
+      //                 runSpacing: 4,
+      //                 children: expense.tags.map((tag) => Chip(
+      //                   label: Text(tag, style: const TextStyle(fontSize: 11)),
+      //                   visualDensity: VisualDensity.compact,
+      //                   padding: EdgeInsets.zero,
+      //                   backgroundColor: Colors.blue.withOpacity(0.1),
+      //                   side: BorderSide.none,
+      //                 )).toList(),
+      //               )
+      //             ],
+      //           ),
+      //           trailing: Row(
+      //             mainAxisSize: MainAxisSize.min,
+      //             children: [
+      //               expense.isEditing
+      //                 ? SizedBox(
+      //                   width: 80,
+      //                   child: TextField(
+      //                     decoration: const InputDecoration(hintText: "0.00"),
+      //                     onSubmitted: (val) {
+      //                       setState(() {
+      //                         expense.variableAmount = double.tryParse(val) ?? 0.0;
+      //                         expense.isEditing = false;
+      //                       });
+      //                     },
+      //                   )
+      //                 )
+      //                 : IconButton(
+      //                   icon: const Icon(Icons.edit_outlined),
+      //                   onPressed: () => setState(() => expense.isEditing = true),
+      //                 ),
+      //             ],
+      //           )
+      //         )
+      //       )).toList(),
+      //     );
+      //   },
+      // ),
       floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
         onPressed: () {
           showDialog(
             context: context,
@@ -100,16 +166,65 @@ class _DashboardState extends State<Dashboard> {
             },
           );
         },
+        backgroundColor: const Color(0xFF448AFF),
+        child: const Icon(Icons.add, color:Colors.white),
        ),
     );
   }
 
-  Widget _statTile(String label, String value, {bool isBold = false}) {
+  Widget _buildSummaryStat(String label, String value) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12)),
-        Text(value, style: TextStyle(fontSize: 20, fontWeight: isBold ? FontWeight.bold : FontWeight.normal),)
-      ]
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, letterSpacing: 1.2)),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+      ],
+    );
+  }
+  Widget _buildExpenseCard(String title, double amount, List<String> tags, {required bool isLocked}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding( 
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    if (isLocked) ...[
+                      const SizedBox(width: 8,),
+                      const Icon(Icons.lock_outline, size: 14, color: Colors.grey,),
+                    ]
+                  ],
+                ),
+
+                const SizedBox(height: 4,),
+
+                Text("\$${amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, color: Colors.white),),
+                
+                const SizedBox(height: 8,),
+                
+                Row(
+                  children: tags.map((tag) => Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Text(tag, style: const TextStyle(fontSize: 10, color:Colors.grey, letterSpacing: 1.0),),
+                  )).toList(),
+                ),
+              ],
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.edit, color: Color(0xFF448AFF)),
+              onPressed: () => print("hehe"),
+            )
+          ],
+        )
+      )
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:expense_tracker/models/expense.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
+import 'package:expense_tracker/widgets/ledger_list.dart';
+import 'package:expense_tracker/widgets/summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,7 +14,7 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   final double _workIncome = 2908.31;
-
+  final DateTime _selectedMonth = DateTime.now();
   List<Expense> allExpenses = [
     Expense(id: '1', label: 'Rent', fixedAmount: 1100, tags: ['Fixed', 'Housing'], date: DateTime(2026, 4, 11)),
     Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Variable', 'Utility'], date: DateTime(2026, 4, 11)),
@@ -36,11 +38,16 @@ class _DashboardState extends State<Dashboard> {
     ),
   ];
 
-  List<Expense> getExpensesForMonth(DateTime month)
+  String _activeFilter = "All";
+
+  List<Expense> get _currentMonthExpense
   {
-    return allExpenses.where((e) =>
-      e.date.month == month.month && e.date.year == month.year
+    var monthList = allExpenses.where((e) =>
+      e.date.year == _selectedMonth.year && e.date.month == _selectedMonth.month
     ).toList();
+
+    if (_activeFilter == "All") return monthList;
+    return monthList.where((e) => e.tags.contains(_activeFilter)).toList();
   }
   
   void _generateFixedExpensesForMonth(DateTime targetDatetime)
@@ -74,20 +81,7 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-
-    _generateFixedExpensesForMonth(DateTime(2026, 2));
-    _generateFixedExpensesForMonth(DateTime(2026, 3));
-
-    allExpenses.add(
-      Expense(
-        id: 'manual_1',
-        label: 'Date Night',
-        fixedAmount: 0.0,
-        variableAmount: 120.50,
-        date: DateTime(2026, 3, 14), // Happened mid-March
-        tags: ['VARIABLE', 'LEISURE'],
-      )
-    );
+    _generateFixedExpensesForMonth(_selectedMonth);
   }
   @override
   Widget build(BuildContext context) {
@@ -96,120 +90,61 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text("Butters' Cash Flow Tracker"),
       ),
-      // body: ListView.builder(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(40.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                _buildSummaryStat("INCOME", "\$${totalIncome.toStringAsFixed(2)}"),
-                const SizedBox(width: 15,),
-                _buildSummaryStat("EXPENSES", "\$${totalOut.toStringAsFixed(2)}"),
-                const SizedBox(width: 15,),
-                _buildSummaryStat("NET FLOW", "\$${cashFlow.toStringAsFixed(2)}"),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            const SizedBox(height: 30,),
+
+            Row(children: [
+                Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.blue, amountColor: Colors.black)),
+                const SizedBox(width: 20,),
+                Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey, amountColor: Colors.black)),
+                const SizedBox(width: 20,),
+                Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green, amountColor: Colors.green)),
               ],
             ),
-            
-            const SizedBox(height: 20,),
-            
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A24),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.greenAccent.withOpacity(0.5)),
-              ),
-              child: Column(
-                children: <Widget>[
-                  const Text("April 2026", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),),
-                  const SizedBox(height: 8,),
-                  Text(
-                    "Net Cash Flow: +\$${cashFlow.toStringAsFixed(2)}",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.greenAccent)
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 20),
-            
-            Expanded(
-              child: ListView(
-                children: <Widget>[
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: true),
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: true),
-                  _buildExpenseCard("Rent", 1100.00, ["FIXED", "HOUSING"], DateTime.now(), isLocked: false),
-                ],
-              ),
+            const SizedBox(height: 30,),
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: AddExpenseDialog(
+                    currentMonth: _selectedMonth,
+                    onExpenseAdded: (Expense newlyCreatedExpense) {
+                      setState(() {
+                        allExpenses.add(newlyCreatedExpense);
+                      });
+                    },
+                  )
+                ),
+                Expanded(
+                  flex: 2,
+                  child: LedgerList(
+                    selectedMonth: _selectedMonth,
+                    expenses: _currentMonthExpense,
+                    activeFilter: _activeFilter,
+                    onDelete: (String idToDelete) {
+                      setState(() => allExpenses.removeWhere((e) => e.id == idToDelete));
+                    },
+                    onFilterChanged: (String newFilter) {
+                      setState(() => _activeFilter = newFilter);
+                    }
+                  )
+                )
+              ]
             ),
+            // const SizedBox(width: 30,),
           ],
-        ),
+        )
       ),
-      //   itemCount: 12,
-      //   itemBuilder: (context, index) {
-      //     DateTime displayMonth = DateTime(2026, 4 - index);
-      //     List<Expense> monthlyList = getExpensesForMonth(displayMonth);
-      //     double monthlyTotal = monthlyList.fold(0, (sum, e) => sum + e.total);
-
-      //     return ExpansionTile( 
-      //       title: Text(DateFormat("MMMM yyyy").format(displayMonth)),
-      //       subtitle: Text("Flow: \$${(_workIncome - monthlyTotal).toStringAsFixed(2)}"),
-      //       children: monthlyList.map((expense) => Card(
-      //         child: ListTile( 
-      //           title: Text(expense.label, style: const TextStyle(fontWeight: FontWeight.bold),),
-      //           subtitle: Column(
-      //             crossAxisAlignment: CrossAxisAlignment.start,
-      //             children: [
-      //               Text(
-      //                 "\$${expense.total.toStringAsFixed(2)}",
-      //                 style: const TextStyle(color: Colors.black87, fontSize: 16)
-      //               ),
-
-      //               const SizedBox(height: 6,),
-                    
-      //               Wrap(
-      //                 spacing: 4,
-      //                 runSpacing: 4,
-      //                 children: expense.tags.map((tag) => Chip(
-      //                   label: Text(tag, style: const TextStyle(fontSize: 11)),
-      //                   visualDensity: VisualDensity.compact,
-      //                   padding: EdgeInsets.zero,
-      //                   backgroundColor: Colors.blue.withOpacity(0.1),
-      //                   side: BorderSide.none,
-      //                 )).toList(),
-      //               )
-      //             ],
-      //           ),
-      //           trailing: Row(
-      //             mainAxisSize: MainAxisSize.min,
-      //             children: [
-      //               expense.isEditing
-      //                 ? SizedBox(
-      //                   width: 80,
-      //                   child: TextField(
-      //                     decoration: const InputDecoration(hintText: "0.00"),
-      //                     onSubmitted: (val) {
-      //                       setState(() {
-      //                         expense.variableAmount = double.tryParse(val) ?? 0.0;
-      //                         expense.isEditing = false;
-      //                       });
-      //                     },
-      //                   )
-      //                 )
-      //                 : IconButton(
-      //                   icon: const Icon(Icons.edit_outlined),
-      //                   onPressed: () => setState(() => expense.isEditing = true),
-      //                 ),
-      //             ],
-      //           )
-      //         )
-      //       )).toList(),
-      //     );
-      //   },
-      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
@@ -221,6 +156,7 @@ class _DashboardState extends State<Dashboard> {
                     allExpenses.add(newlyCreatedExpense);
                   });
                 },
+                currentMonth: _selectedMonth,
               );
             },
           );
@@ -228,66 +164,6 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: const Color(0xFF448AFF),
         child: const Icon(Icons.add, color:Colors.white),
        ),
-    );
-  }
-
-  Widget _buildSummaryStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, letterSpacing: 1.2)),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-      ],
-    );
-  }
-  Widget _buildExpenseCard(String title, double amount, List<String> tags, DateTime date, {required bool isLocked}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding( 
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    if (isLocked) ...[
-                      const SizedBox(width: 8,),
-                      const Icon(Icons.lock_outline, size: 14, color: Colors.grey,),
-                    ]
-                  ],
-                ),
-
-                const SizedBox(height: 4,),
-
-                Text("\$${amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, color: Colors.white),),
-                
-                const SizedBox(height: 8,),
-                
-                Text(date.toString()),
-                
-                const SizedBox(height: 8,),
-                
-                Row(
-                  children: tags.map((tag) => Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Text(tag, style: const TextStyle(fontSize: 10, color:Colors.grey, letterSpacing: 1.0),),
-                  )).toList(),
-                ),
-              ],
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF448AFF)),
-              onPressed: () => print("hehe"),
-            )
-          ],
-        )
-      )
     );
   }
 }

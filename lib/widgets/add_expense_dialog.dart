@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 class AddExpenseDialog extends StatefulWidget
 {
   final Function(Expense) onExpenseAdded;
-  const AddExpenseDialog({super.key, required this.onExpenseAdded});
+  final DateTime currentMonth;
+
+  const AddExpenseDialog({super.key, required this.onExpenseAdded, required this.currentMonth});
 
   @override
   State<AddExpenseDialog> createState() => _AddExpenseDialogState();
@@ -15,16 +17,25 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
   String _label = "";
   double _amount = 0.0;
 
-  final List<String> _categories = ["Food", "Housing", "Utility", "Leisure", "Misc"];
-  String _selectedTag = "Misc";
+  final List<String> _categories = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Health", "Other"];
+  String _selectedTag = "Food";
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Add Manual Expense"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text("Add Expense", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          
+          const SizedBox(height: 20,),
+          
           // Label Input
           TextField(
             decoration: const InputDecoration(labelText: "Expense Name"),
@@ -33,7 +44,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
 
           // Amount Input
           TextField(
-            decoration: const InputDecoration(labelText: "Amount"),
+            decoration: const InputDecoration(labelText: "Amount", prefixText: "\$ ", border: OutlineInputBorder()),
             keyboardType: TextInputType.number,
             onChanged: (val) => _amount = double.tryParse(val) ?? 0.0,
           ),
@@ -42,7 +53,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
 
           // Dropdown Menu
           DropdownButtonFormField<String>( 
-            decoration: const InputDecoration(labelText: "Category"),
+            decoration: const InputDecoration(labelText: "Category", border: OutlineInputBorder()),
             initialValue: _selectedTag,
             items: _categories.map((String category) {
               return DropdownMenuItem<String>(
@@ -52,38 +63,39 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
             }).toList(),
             onChanged: (String? newValue) {
               setState(() {
-                // _selectedTag = newValue!;
-                _selectedTag = newValue ?? "Misc";
+                _selectedTag = newValue!;
               });
             },
           ),
+
+          const SizedBox(height: 24,),
+
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2B6CB0),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              onPressed: (){
+                final newExpense = Expense(
+                  id: DateTime.now().toString(),
+                  label: _label,
+                  fixedAmount: 0,
+                  variableAmount: _amount,
+                  date: widget.currentMonth,
+                  tags: [_selectedTag],
+                );
+
+                widget.onExpenseAdded(newExpense);
+              },
+              child: const Text("Add Expense", style: TextStyle(fontSize: 16)),
+            ),
+          )
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final newExpense = Expense( 
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              label: _label,
-              fixedAmount: 0.0,
-              variableAmount: _amount,
-              date: DateTime.now(),
-              tags: [_selectedTag],
-            );
-            // whenever you need to access a variable defined in the top 
-            // StatefulWidget class from inside the State class, 
-            // you prefix it with `widget.`
-            widget.onExpenseAdded(newExpense);
-
-            Navigator.pop(context);
-          },
-          child: const Text("Add"),
-        )
-      ],
     );
   }
 }

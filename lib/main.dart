@@ -13,16 +13,21 @@ class ExpenseApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Expense Tracker App',
+      // theme: ThemeData(
+      //   brightness: Brightness.dark,
+      //   scaffoldBackgroundColor: const Color(0xFF121212),
+      //   cardColor: const Color(0xFF1E1E1E),
+      //   colorScheme: const ColorScheme.dark(
+      //     primary: Color(0xFF448AFF),
+      //     secondary: Color(0xFF00E676),
+      //   ),
+      //   useMaterial3: true,
+      //   // colorSchemeSeed: Colors.blue,
+      // ),
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: const Color(0xFF1E1E1E),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF448AFF),
-          secondary: Color(0xFF00E676),
-        ),
-        useMaterial3: true,
-        // colorSchemeSeed: Colors.blue,
+        useMaterial3: false,
+        colorSchemeSeed: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFFF9FAFB)
       ),
       home: const Dashboard(),
       );

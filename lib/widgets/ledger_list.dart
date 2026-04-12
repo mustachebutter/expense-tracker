@@ -22,6 +22,14 @@ class LedgerList extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final List<String> _filters = ["All", "Food", "Transport", "Entertainment", "Shopping", "Bills", "Health", "Other"];
+    final fixedExpenses = expenses.where((e) =>
+      e.tags.map((t) => t.toLowerCase()).contains("fixed")
+    ).toList();
+    
+    final variableExpenses = expenses.where((e) =>
+      !e.tags.map((t) => t.toLowerCase()).contains("fixed")
+    ).toList();
+
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,15 +73,71 @@ class LedgerList extends StatelessWidget
                 ),
               ),
 
-              Divider(height: 1,),
+              const Divider(height: 1,),
               
+              // Fixed Expenses 
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFFFAFAFA),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Fixed Expenses", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),),
+                            TextButton.icon( 
+                              onPressed: () {
+                                //TODO: Add fixed expenses handler
+                              },
+                              icon: const Icon(Icons.add, size: 16, color: Colors.black54),
+                              label: const Text("Add Fixed", style: TextStyle(color: Colors.black54),),
+                            )
+                          ],
+                        )
+                      ),
+                      ListView.separated( 
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: fixedExpenses.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                      itemBuilder: (context, index) {
+                        final expense = fixedExpenses[index];
+                        return Container(
+                          color: Color(0xFFFAFAFA),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                            title: Text(expense.label, style: const TextStyle(fontSize: 13)),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+                                const SizedBox(width: 16,),
+                                IconButton(
+                                  onPressed: () => onDelete(expense.id),
+                                  icon: const Icon(Icons.delete, color: Colors.grey, size: 20,),
+                                )
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ]
+                )
+              ),
+
+              // Variable Expenses
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: expenses.length,
+                itemCount: variableExpenses.length,
                 separatorBuilder: (context, index) => const Divider(height: 1,),
                 itemBuilder: (context, index) {
-                  final expense = expenses[index];
+                  final expense = variableExpenses[index];
                   return ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     title: Text(expense.label, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -84,7 +148,7 @@ class LedgerList extends StatelessWidget
                     trailing: Row( 
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+                        Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
                         const SizedBox(width: 16),
                         IconButton( 
                           icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),

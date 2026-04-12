@@ -86,10 +86,10 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Butters' Cash Flow Tracker"),
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      //   title: const Text("Butters' Cash Flow Tracker"),
+      // ),
       backgroundColor: const Color(0xFFF9FAFB),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(40.0),
@@ -125,6 +125,7 @@ class _DashboardState extends State<Dashboard> {
                     },
                   )
                 ),
+                const SizedBox(width: 30,),
                 Expanded(
                   flex: 2,
                   child: LedgerList(
@@ -145,25 +146,25 @@ class _DashboardState extends State<Dashboard> {
           ],
         )
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) {
-              return AddExpenseDialog(
-                onExpenseAdded: (Expense newlyCreatedExpense) {
-                  setState(() {
-                    allExpenses.add(newlyCreatedExpense);
-                  });
-                },
-                currentMonth: _selectedMonth,
-              );
-            },
-          );
-        },
-        backgroundColor: const Color(0xFF448AFF),
-        child: const Icon(Icons.add, color:Colors.white),
-       ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     showDialog(
+      //       context: context,
+      //       builder: (context) {
+      //         return AddExpenseDialog(
+      //           onExpenseAdded: (Expense newlyCreatedExpense) {
+      //             setState(() {
+      //               allExpenses.add(newlyCreatedExpense);
+      //             });
+      //           },
+      //           currentMonth: _selectedMonth,
+      //         );
+      //       },
+      //     );
+      //   },
+      //   backgroundColor: const Color(0xFF448AFF),
+      //   child: const Icon(Icons.add, color:Colors.white),
+      //  ),
     );
   }
 }

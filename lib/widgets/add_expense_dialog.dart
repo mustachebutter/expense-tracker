@@ -17,7 +17,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
   String _label = "";
   double _amount = 0.0;
 
-  final List<String> _categories = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Health", "Other"];
+  final List<String> _categories = ["Food", "Transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
   String _selectedTag = "Food";
 
   @override
@@ -38,9 +38,11 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
           
           // Label Input
           TextField(
-            decoration: const InputDecoration(labelText: "Expense Name"),
+            decoration: const InputDecoration(labelText: "Expense Name", border: OutlineInputBorder()),
             onChanged: (val) => _label = val,
           ),
+
+          const SizedBox(height: 15,),
 
           // Amount Input
           TextField(

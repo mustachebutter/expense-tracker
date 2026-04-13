@@ -25,7 +25,7 @@ class ExpenseApp extends StatelessWidget {
       //   // colorSchemeSeed: Colors.blue,
       // ),
       theme: ThemeData(
-        useMaterial3: false,
+        useMaterial3: true,
         colorSchemeSeed: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFF9FAFB)
       ),

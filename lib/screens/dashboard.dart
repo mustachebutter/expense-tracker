@@ -15,11 +15,17 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   final double _workIncome = 2908.31;
   final DateTime _selectedMonth = DateTime.now();
+  final DateTime _startMonth = DateTime(2026, 3);
+  final DateTime _endMonth = DateTime.now();
+
   List<Expense> allExpenses = [
-    Expense(id: '1', label: 'Rent', fixedAmount: 1100, tags: ['Fixed', 'Housing'], date: DateTime(2026, 4, 11)),
-    Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Variable', 'Utility'], date: DateTime(2026, 4, 11)),
-    Expense(id: '3', label: 'Internet and Phone', fixedAmount: 163.85, tags: ['Fixed', 'Utility'], date: DateTime(2026, 4, 11)),
+    Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+    Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+    Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
+    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
   ];
+  
+  final List<String> _filters = ["All", "Food", "Transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
 
   final List<Expense> _fixedExpenseTemplates = [
     Expense(
@@ -27,23 +33,23 @@ class _DashboardState extends State<Dashboard> {
       label: "Rent",
       fixedAmount: 1100.00,
       date: DateTime.now(),
-      tags: ["FIXED", "HOUSING"],
+      tags: ["Fixed"],
     ),
     Expense(
       id: "template_internet",
       label: "Internet and Phone",
       fixedAmount: 163.85,
       date: DateTime.now(),
-      tags: ["FIXED", "UTILITY"],
+      tags: ["FIXED"],
     ),
   ];
 
   String _activeFilter = "All";
 
-  List<Expense> get _currentMonthExpense
+  List<Expense> _currentMonthExpense(DateTime targetDatetime)
   {
     var monthList = allExpenses.where((e) =>
-      e.date.year == _selectedMonth.year && e.date.month == _selectedMonth.month
+      e.date.year == targetDatetime.year && e.date.month == targetDatetime.month
     ).toList();
 
     if (_activeFilter == "All") return monthList;
@@ -55,7 +61,7 @@ class _DashboardState extends State<Dashboard> {
     bool alreadyGenerated = allExpenses.any((e) => 
       e.date.year == targetDatetime.year &&
       e.date.month == targetDatetime.month &&
-      e.tags.contains("FIXED")
+      e.tags.contains("Fixed")
     );
 
     if (alreadyGenerated) return;
@@ -74,6 +80,12 @@ class _DashboardState extends State<Dashboard> {
       }
     });
   }
+  
+  void onFilterChanged (String newFilter) 
+  {
+    setState(() => _activeFilter = newFilter);
+  }
+
   double get totalIncome => _workIncome * 2;
   double get totalOut => allExpenses.fold(0, (sum, item) => sum + item.total);
   double get cashFlow => totalIncome - totalOut;
@@ -126,18 +138,31 @@ class _DashboardState extends State<Dashboard> {
                   )
                 ),
                 const SizedBox(width: 30,),
+                
                 Expanded(
                   flex: 2,
-                  child: LedgerList(
-                    selectedMonth: _selectedMonth,
-                    expenses: _currentMonthExpense,
-                    activeFilter: _activeFilter,
-                    onDelete: (String idToDelete) {
-                      setState(() => allExpenses.removeWhere((e) => e.id == idToDelete));
-                    },
-                    onFilterChanged: (String newFilter) {
-                      setState(() => _activeFilter = newFilter);
-                    }
+                  child: Column(
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        children: _filters.map((filterName) {
+                          bool isSelected = _activeFilter == filterName;
+
+                          return ChoiceChip(
+                            label: Text(filterName),
+                            selected: isSelected,
+                            selectedColor: Colors.black,
+                            labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+                            onSelected: (bool userClickedIt) {
+                              onFilterChanged(filterName);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    
+                      const SizedBox(height: 20,),
+                      ..._populateLedgerLists()
+                    ],
                   )
                 )
               ]
@@ -166,5 +191,28 @@ class _DashboardState extends State<Dashboard> {
       //   child: const Icon(Icons.add, color:Colors.white),
       //  ),
     );
+  }
+
+  List<Widget> _populateLedgerLists()
+  {
+    DateTime currentMonth = DateTime(_startMonth.year, _startMonth.month, 1);
+    DateTime endMonth = DateTime(_endMonth.year, _endMonth.month, 1);
+    List<Widget> lists = [];
+    while (!currentMonth.isAfter(endMonth))
+    {
+      lists.add(
+        LedgerList(
+          selectedMonth: currentMonth,
+          expenses: _currentMonthExpense(currentMonth),
+          activeFilter: _activeFilter,
+          onDelete: (String idToDelete) {
+            setState(() => allExpenses.removeWhere((e) => e.id == idToDelete));
+          },
+        )
+      );
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+    }
+
+    return lists;
   }
 }

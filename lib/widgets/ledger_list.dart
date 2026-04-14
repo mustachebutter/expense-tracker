@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 class LedgerList extends StatelessWidget
 {
   final DateTime selectedMonth;
-  final List<Expense> expenses;
+  final List<Expense> fixedExpenses;
+  final List<Expense> variableExpenses;
+  final (double, double, double) monthStat;
   final String activeFilter;
   final bool isInitiallyExpanded;
   final Function(String id) onDelete;
@@ -13,7 +15,9 @@ class LedgerList extends StatelessWidget
   const LedgerList({
     super.key,
     required this.selectedMonth,
-    required this.expenses,
+    required this.fixedExpenses,
+    required this.variableExpenses,
+    required this.monthStat,
     required this.activeFilter,
     this.isInitiallyExpanded = false,
     required this.onDelete,
@@ -42,7 +46,7 @@ class LedgerList extends StatelessWidget
         "label_color": Colors.orange,
         "font_color": Colors.black,
       },
-      "Bills": {
+      "Utility": {
         "label_color": Colors.deepPurple,
         "font_color": Colors.white,
       },
@@ -55,15 +59,8 @@ class LedgerList extends StatelessWidget
         "font_color": Colors.black,
       },
     };
-    final fixedExpenses = expenses.where((e) =>
-      e.tags.map((t) => t.toLowerCase()).contains("fixed")
-    ).toList();
-    
-    final variableExpenses = expenses.where((e) =>
-      !e.tags.map((t) => t.toLowerCase()).contains("fixed")
-    ).toList();
 
-
+    var (totalIncome, expense, cashFlow) = monthStat;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[        
@@ -76,19 +73,70 @@ class LedgerList extends StatelessWidget
           child: Column(
             children: <Widget>[
               ExpansionTile(
-                title: Text(DateFormat("MMMM yyyy").format(selectedMonth), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                title: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(DateFormat("MMMM yyyy").format(selectedMonth), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Wrap(
+                      spacing: 20,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            text: "Income: ",
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            children: [
+                              TextSpan(
+                                text: "\$${totalIncome.toStringAsFixed(2)}",
+                                style: const TextStyle(color: Colors.black,  fontSize: 12, fontWeight: FontWeight.bold),
+                              )
+                            ]
+                          )
+                        ),
+                        Text.rich(
+                          TextSpan(
+                            text: "Expenses: ",
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            children: [
+                              TextSpan(
+                                text: "\$${expense.toStringAsFixed(2)}",
+                                style: const TextStyle(color: Colors.black,  fontSize: 12, fontWeight: FontWeight.bold),
+                              )
+                            ]
+                          )
+                        ),
+                        Text.rich(
+                          TextSpan(
+                            text: "Cash Flow: ",
+                            style: const TextStyle(color: Colors.green, fontSize: 12),
+                            children: [
+                              TextSpan(
+                                text: "\$${cashFlow.toStringAsFixed(2)}",
+                                style: const TextStyle(color: Colors.green,  fontSize: 12, fontWeight: FontWeight.bold),
+                              )
+                            ]
+                          )
+                        ),
+                      ],
+                    )
+                  ],
+                ),
                 initiallyExpanded: isInitiallyExpanded,
-                children: [
-                  const Divider(height: 1,),
-                  
+                shape: Border.all(color: Colors.transparent, width: 0),
+                tilePadding: EdgeInsets.all(20.0),
+                children: [                  
                   // Fixed Expenses 
                   Container(
                     decoration: BoxDecoration(
                       color: Color(0xFFFAFAFA),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade300, width: 1.0),
+                        bottom: BorderSide(color: Colors.grey.shade300, width: 1.0),
+                      ),
                     ),
                     child: Column(
                       children: [
+                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             child: Row(
@@ -105,39 +153,53 @@ class LedgerList extends StatelessWidget
                               ],
                             )
                           ),
-                          ListView.separated( 
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: fixedExpenses.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                          itemBuilder: (context, index) {
-                            final expense = fixedExpenses[index];
-                            return Container(
-                              color: Color(0xFFFAFAFA),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                                title: Text(expense.label, style: const TextStyle(fontSize: 13)),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
-                                    const SizedBox(width: 16,),
-                                    IconButton(
-                                      onPressed: () => onDelete(expense.id),
-                                      icon: const Icon(Icons.delete, color: Colors.grey, size: 20,),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                          fixedExpenses.isEmpty
+                            ? Padding(
+                              padding: EdgeInsets.all(40.0),
+                              child: Text(
+                                "No fixed expenses! ദ്ദി(•ᴗ•)"
+                              )
+                            )
+                            : ListView.separated( 
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: fixedExpenses.length,
+                              separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                              itemBuilder: (context, index) {
+                                final expense = fixedExpenses[index];
+                                return Container(
+                                  color: Color(0xFFFAFAFA),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                                    title: Text(expense.label, style: const TextStyle(fontSize: 13)),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+                                        const SizedBox(width: 16,),
+                                        IconButton(
+                                          onPressed: () => onDelete(expense.id),
+                                          icon: const Icon(Icons.delete, color: Colors.grey, size: 20,),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                       ]
                     )
                   ),
 
                   // Variable Expenses
-                  ListView.separated(
+                  variableExpenses.isEmpty
+                    ? Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: Text(
+                        "No variable expenses! ᕙ( •̀ ᗜ •́ )ᕗ"
+                      )
+                    )
+                    : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: variableExpenses.length,

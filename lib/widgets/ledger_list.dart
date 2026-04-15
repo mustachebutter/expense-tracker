@@ -28,38 +28,31 @@ class LedgerList extends StatelessWidget
     Map<String, Map<String, Color>> filterConfigs = {
       "All": {
         "label_color": Colors.black,
-        "font_color": Colors.white,
       },
       "Food": {
         "label_color": Colors.yellow,
-        "font_color": Colors.black,
       },
       "Transport": {
         "label_color": Colors.green,
-        "font_color": Colors.black,
       },
       "Entertainment": {
         "label_color": Colors.blue,
-        "font_color": Colors.white,
       },
       "Shopping": {
         "label_color": Colors.orange,
-        "font_color": Colors.black,
       },
       "Utility": {
         "label_color": Colors.deepPurple,
-        "font_color": Colors.white,
       },
       "Health": {
         "label_color": Colors.red,
-        "font_color": Colors.white,
       },
       "Other": {
         "label_color": Colors.grey,
-        "font_color": Colors.black,
       },
     };
 
+    double totalExpenseOfFilter() => variableExpenses.fold(0.0, (sum, item) => sum + item.fixedAmount + item.variableAmount);
     var (totalIncome, expense, cashFlow) = monthStat;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,7 +123,6 @@ class LedgerList extends StatelessWidget
                     decoration: BoxDecoration(
                       color: Color(0xFFFAFAFA),
                       border: Border(
-                        top: BorderSide(color: Colors.grey.shade300, width: 1.0),
                         bottom: BorderSide(color: Colors.grey.shade300, width: 1.0),
                       ),
                     ),
@@ -208,7 +200,6 @@ class LedgerList extends StatelessWidget
                       final expense = variableExpenses[index];
                       String tag = expense.tags.isNotEmpty ? expense.tags.first : "Other";
                       Color chipColor = filterConfigs[tag]?["label_color"] ?? Colors.grey;
-                      Color fontColor = filterConfigs[tag]?["font_color"] ?? Colors.black;
                       
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -220,10 +211,10 @@ class LedgerList extends StatelessWidget
                               Chip(
                                 label: Text(
                                   tag,
-                                  style: new TextStyle(color: fontColor),
+                                  style: TextStyle(color: chipColor),
                                 ),
-                                backgroundColor: chipColor,
-                                
+                                backgroundColor: chipColor.withValues(alpha: 0.1),
+                                padding: EdgeInsets.all(0.0),
                               ),
                               const SizedBox(width: 10,),
                               Text(DateFormat("MMM d").format(expense.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
@@ -243,6 +234,25 @@ class LedgerList extends StatelessWidget
                         )
                       );
                     },
+                  ),
+                  Container(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Total Expense", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),),
+                              Text(
+                                "\$${totalExpenseOfFilter().toStringAsFixed(2)}",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              )
+                            ],
+                          )
+                        ),
+                      ],
+                    )
                   ),
                 ],
               ),

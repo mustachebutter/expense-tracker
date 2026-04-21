@@ -1,6 +1,7 @@
 import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/models/expense.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AddExpenseDialog extends StatefulWidget
 {
@@ -48,7 +49,10 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
           // Amount Input
           TextField(
             decoration: const InputDecoration(labelText: "Amount", prefixText: "\$ ",),
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r"^\d*\.?\d{0,2}")),
+            ],
             onChanged: (val) => _amount = double.tryParse(val) ?? 0.0,
           ),
           

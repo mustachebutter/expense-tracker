@@ -135,7 +135,6 @@ class _DashboardState extends State<Dashboard> {
   }
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(40.0),
@@ -234,11 +233,13 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _populateLedgerLists()
   {
-    DateTime currentMonth = DateTime(_startMonth.year, _startMonth.month, 1);
-    DateTime endMonth = DateTime(_endMonth.year, _endMonth.month, 1);
+    DateTime currentMonth = DateTime(_endMonth.year, _endMonth.month, 1);
+    DateTime endMonth = DateTime(_startMonth.year, _startMonth.month, 1);
     List<Widget> lists = [];
-    while (!currentMonth.isAfter(endMonth))
+    int counter = 0;
+    while (!currentMonth.isBefore(_startMonth))
     {
+      counter++;
       lists.add(
         LedgerList(
           selectedMonth: currentMonth,
@@ -249,9 +250,11 @@ class _DashboardState extends State<Dashboard> {
           onDelete: (String idToDelete) {
             setState(() => allExpenses.removeWhere((e) => e.id == idToDelete));
           },
+          isInitiallyExpanded: counter == 1 ? true : false,
         )
       );
-      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+      // NOTE: Dart automatically converts this to previous year!
+      currentMonth = DateTime(currentMonth.year, currentMonth.month - 1, 1);
     }
 
     return Column(

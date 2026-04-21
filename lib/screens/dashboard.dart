@@ -1,4 +1,5 @@
 import 'package:expense_tracker/models/expense.dart';
+import 'package:expense_tracker/screens/settings.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/ledger_list.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
@@ -6,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  final VoidCallback onThemeToggle;
+  
+  const Dashboard({super.key, required this.onThemeToggle});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -132,23 +135,47 @@ class _DashboardState extends State<Dashboard> {
   }
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(40.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-            const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  children: [
+                    const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                    const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                  ],
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.settings),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.dark_mode),
+                      onPressed: widget.onThemeToggle,
+                    ),
+                  ],
+                )
+              ],
+            ),
+
             const SizedBox(height: 30,),
 
             Row(children: [
-                Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.blue, amountColor: Colors.black)),
+                Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
                 const SizedBox(width: 20,),
-                Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey, amountColor: Colors.black)),
+                Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
                 const SizedBox(width: 20,),
-                Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green, amountColor: Colors.green)),
+                Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
               ],
             ),
 
@@ -185,8 +212,6 @@ class _DashboardState extends State<Dashboard> {
                             return ChoiceChip(
                               label: Text(filterName),
                               selected: isSelected,
-                              selectedColor: Colors.black,
-                              labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
                               onSelected: (bool userClickedIt) {
                                 onFilterChanged(filterName);
                               },

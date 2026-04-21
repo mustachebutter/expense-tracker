@@ -1,3 +1,4 @@
+import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/models/expense.dart';
 import 'package:flutter/material.dart';
 
@@ -17,17 +18,17 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
   String _label = "";
   double _amount = 0.0;
 
-  final List<String> _categories = ["Food", "Transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
   String _selectedTag = "Food";
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.primary,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +39,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
           
           // Label Input
           TextField(
-            decoration: const InputDecoration(labelText: "Expense Name", border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: "Expense Name",),
             onChanged: (val) => _label = val,
           ),
 
@@ -46,7 +47,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
 
           // Amount Input
           TextField(
-            decoration: const InputDecoration(labelText: "Amount", prefixText: "\$ ", border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: "Amount", prefixText: "\$ ",),
             keyboardType: TextInputType.number,
             onChanged: (val) => _amount = double.tryParse(val) ?? 0.0,
           ),
@@ -55,12 +56,25 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
 
           // Dropdown Menu
           DropdownButtonFormField<String>( 
-            decoration: const InputDecoration(labelText: "Category", border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: "Category",),
+            dropdownColor: colorScheme.surface,
+            icon: Icon(Icons.label),
             initialValue: _selectedTag,
-            items: _categories.map((String category) {
+            items: AppColors.categories.entries.map((var category) {
               return DropdownMenuItem<String>(
-                value: category,
-                child: Text(category),
+                value: category.key,
+                child: Row(
+                  children: [
+                    category.value["icon"] as Icon,
+                    SizedBox(width: 10,),
+                    Text(
+                      category.key,
+                      style: TextStyle(
+                        color: category.value["color"] as Color,
+                      )
+                    ),
+                  ],
+                ),
               );
             }).toList(),
             onChanged: (String? newValue) {
@@ -76,11 +90,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2B6CB0),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
               onPressed: (){
                 final newExpense = Expense(
                   id: DateTime.now().toString(),
@@ -91,6 +100,8 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
                   tags: [_selectedTag],
                 );
 
+                if (newExpense.label.isEmpty || newExpense.variableAmount == 0) return;
+                  
                 widget.onExpenseAdded(newExpense);
               },
               child: const Text("Add Expense", style: TextStyle(fontSize: 16)),

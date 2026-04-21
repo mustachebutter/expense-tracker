@@ -1,3 +1,4 @@
+import 'package:expense_tracker/main.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/models/expense.dart';
 import 'package:intl/intl.dart';
@@ -25,43 +26,23 @@ class LedgerList extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
-    Map<String, Map<String, Color>> filterConfigs = {
-      "All": {
-        "label_color": Colors.black,
-      },
-      "Food": {
-        "label_color": Colors.yellow,
-      },
-      "Transport": {
-        "label_color": Colors.green,
-      },
-      "Entertainment": {
-        "label_color": Colors.blue,
-      },
-      "Shopping": {
-        "label_color": Colors.orange,
-      },
-      "Utility": {
-        "label_color": Colors.deepPurple,
-      },
-      "Health": {
-        "label_color": Colors.red,
-      },
-      "Other": {
-        "label_color": Colors.grey,
-      },
-    };
-
     double totalExpenseOfFilter() => variableExpenses.fold(0.0, (sum, item) => sum + item.fixedAmount + item.variableAmount);
     var (totalIncome, expense, cashFlow) = monthStat;
+
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final TextTheme textStyle = Theme.of(context).textTheme;
+    final Brightness brightness = Theme.of(context).brightness;
+    final Color variableTextColor = brightness == Brightness.light ? Colors.grey : Colors.blueGrey;
+    final Color variableAmountTextColor = brightness == Brightness.light ? Colors.black : Colors.white;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[        
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colorScheme.primary,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: colorScheme.outline),
           ),
           child: Column(
             children: <Widget>[
@@ -71,17 +52,24 @@ class LedgerList extends StatelessWidget
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(DateFormat("MMMM yyyy").format(selectedMonth), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    Wrap(
+                  ],
+                ),
+                subtitle: Padding(
+                  padding: EdgeInsetsGeometry.only(top: 10),
+                  child: Wrap(
                       spacing: 20,
                       children: [
                         Text.rich(
                           TextSpan(
                             text: "Income: ",
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            style: textStyle.bodySmall!.copyWith(color: variableTextColor),
                             children: [
                               TextSpan(
                                 text: "\$${totalIncome.toStringAsFixed(2)}",
-                                style: const TextStyle(color: Colors.black,  fontSize: 12, fontWeight: FontWeight.bold),
+                                style: textStyle.bodySmall!.copyWith(
+                                  color: variableAmountTextColor,
+                                  fontWeight: FontWeight.bold
+                                ),
                               )
                             ]
                           )
@@ -89,11 +77,13 @@ class LedgerList extends StatelessWidget
                         Text.rich(
                           TextSpan(
                             text: "Expenses: ",
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            style: textStyle.bodySmall!.copyWith(color: variableTextColor),
                             children: [
                               TextSpan(
                                 text: "\$${expense.toStringAsFixed(2)}",
-                                style: const TextStyle(color: Colors.black,  fontSize: 12, fontWeight: FontWeight.bold),
+                                style: textStyle.bodySmall!.copyWith(color: variableAmountTextColor,
+                                fontWeight: FontWeight.bold
+                              ),
                               )
                             ]
                           )
@@ -101,19 +91,18 @@ class LedgerList extends StatelessWidget
                         Text.rich(
                           TextSpan(
                             text: "Cash Flow: ",
-                            style: const TextStyle(color: Colors.green, fontSize: 12),
+                            style: textStyle.bodySmall!.copyWith(color: Colors.green,),
                             children: [
                               TextSpan(
                                 text: "\$${cashFlow.toStringAsFixed(2)}",
-                                style: const TextStyle(color: Colors.green,  fontSize: 12, fontWeight: FontWeight.bold),
+                                style: textStyle.bodySmall!.copyWith(color: Colors.green, fontWeight: FontWeight.bold),
                               )
                             ]
                           )
                         ),
                       ],
                     )
-                  ],
-                ),
+                  ),
                 initiallyExpanded: isInitiallyExpanded,
                 shape: Border.all(color: Colors.transparent, width: 0),
                 tilePadding: EdgeInsets.all(20.0),
@@ -121,26 +110,26 @@ class LedgerList extends StatelessWidget
                   // Fixed Expenses 
                   Container(
                     decoration: BoxDecoration(
-                      color: Color(0xFFFAFAFA),
+                      color: colorScheme.surface,
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300, width: 1.0),
+                        bottom: BorderSide(color: colorScheme.outline, width: 1.0),
                       ),
                     ),
                     child: Column(
                       children: [
-                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                          Divider(height: 1, color: colorScheme.outlineVariant),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Fixed Expenses", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),),
+                                const Text("Fixed Expenses", style: TextStyle(fontWeight: FontWeight.w900),),
                                 TextButton.icon( 
                                   onPressed: () {
                                     //TODO: Add fixed expenses handler
                                   },
-                                  icon: const Icon(Icons.add, size: 16, color: Colors.black54),
-                                  label: const Text("Add Fixed", style: TextStyle(color: Colors.black54),),
+                                  icon: const Icon(Icons.add,),
+                                  label: const Text("Add Fixed",),
                                 )
                               ],
                             )
@@ -156,22 +145,21 @@ class LedgerList extends StatelessWidget
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: fixedExpenses.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                              separatorBuilder: (context, index) => Divider(height: 1, color: colorScheme.outlineVariant),
                               itemBuilder: (context, index) {
                                 final expense = fixedExpenses[index];
                                 return Container(
-                                  color: Color(0xFFFAFAFA),
+                                  color: colorScheme.surface,
                                   child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                                    title: Text(expense.label, style: const TextStyle(fontSize: 13)),
+                                    title: Text(expense.label, style: textStyle.bodyMedium!.copyWith(fontWeight: FontWeight.w500)),
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+                                        Text("\$${expense.total.toStringAsFixed(2)}", style: textStyle.labelLarge!.copyWith(fontWeight: FontWeight.bold),),
                                         const SizedBox(width: 16,),
                                         IconButton(
                                           onPressed: () => onDelete(expense.id),
-                                          icon: const Icon(Icons.delete, color: Colors.grey, size: 20,),
+                                          icon: const Icon(Icons.delete),
                                         )
                                       ],
                                     ),
@@ -199,11 +187,10 @@ class LedgerList extends StatelessWidget
                     itemBuilder: (context, index) {
                       final expense = variableExpenses[index];
                       String tag = expense.tags.isNotEmpty ? expense.tags.first : "Other";
-                      Color chipColor = filterConfigs[tag]?["label_color"] ?? Colors.grey;
+                      Color chipColor = AppColors.categories[tag]?["color"] as Color;
                       
                       return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        title: Text(expense.label, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        title: Text(expense.label, style: textStyle.bodyLarge!.copyWith(fontWeight: FontWeight.w500)),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Row(
@@ -227,7 +214,7 @@ class LedgerList extends StatelessWidget
                             Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
                             const SizedBox(width: 16),
                             IconButton( 
-                              icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                              icon: const Icon(Icons.delete_outline),
                               onPressed: () => onDelete(expense.id),
                             )
                           ],
@@ -243,7 +230,7 @@ class LedgerList extends StatelessWidget
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text("Total Expense", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),),
+                              const Text("Total Expense", style: TextStyle(fontWeight: FontWeight.bold),),
                               Text(
                                 "\$${totalExpenseOfFilter().toStringAsFixed(2)}",
                                 style: TextStyle(fontWeight: FontWeight.bold),

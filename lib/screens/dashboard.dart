@@ -135,98 +135,150 @@ class _DashboardState extends State<Dashboard> {
   }
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.sizeOf(context).width;
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(40.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  children: [
-                    const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                    const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.settings),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.dark_mode),
-                      onPressed: widget.onThemeToggle,
-                    ),
-                  ],
-                )
-              ],
-            ),
-
-            const SizedBox(height: 30,),
-
-            Row(children: [
-                Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
-                const SizedBox(width: 20,),
-                Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
-                const SizedBox(width: 20,),
-                Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
-              ],
-            ),
-
-            const SizedBox(height: 30,),
-
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: AddExpenseDialog(
-                    currentMonth: _selectedMonth,
-                    onExpenseAdded: (Expense newlyCreatedExpense) {
-                      setState(() {
-                        allExpenses.add(newlyCreatedExpense);
-                      });
-                    },
-                  )
-                ),
-                const SizedBox(width: 30,),
-                
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: Wrap(
-                          spacing: 8,
-                          alignment: WrapAlignment.start,
-                          children: _filters.map((filterName) {
-                            bool isSelected = _activeFilter == filterName;
-
-                            return ChoiceChip(
-                              label: Text(filterName),
-                              selected: isSelected,
-                              onSelected: (bool userClickedIt) {
-                                onFilterChanged(filterName);
-                              },
-                            );
-                          }).toList(),
+      floatingActionButton: screenWidth < 600
+        ? FloatingActionButton(
+          onPressed: () {
+            //NOTE: This is the new standard for Material 3. It's more user friendly compared to showDialog()
+            showModalBottomSheet(
+              context: context,
+              //NOTE: This is to allow the sheet to float higher up the screen
+              isScrollControlled: true,
+              builder: (BuildContext context) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AddExpenseDialog(
+                          currentMonth: _selectedMonth,
+                          onExpenseAdded: (Expense newlyCreatedExpense) {
+                            setState(() => allExpenses.add(newlyCreatedExpense));
+                            // NOTE: This needs to be here as an exclusive for mobile
+                            // on PC and web there won't be any modal to close! so it would errored out
+                            Navigator.pop(context);
+                          },
                         ),
+                      ],
+                    )
+                  )
+                );
+              }
+            );
+          },
+          child: const Icon(Icons.add),
+        )
+        : null,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(40.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    children: [
+                      const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                      const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.settings),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
+                        },
                       ),
-                      const SizedBox(height: 20,),
-                      _populateLedgerLists()
+                      IconButton(
+                        icon: Icon(Icons.dark_mode),
+                        onPressed: widget.onThemeToggle,
+                      ),
                     ],
                   )
-                )
-              ]
-            ),
-          ],
-        )
+                ],
+              ),
+
+              const SizedBox(height: 30,),
+
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                alignment: WrapAlignment.center,
+                children: [
+                  Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
+                  const SizedBox(width: 20,),
+                  Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
+                  const SizedBox(width: 20,),
+                  Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
+                ],
+              ),
+
+              const SizedBox(height: 30,),
+
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 600) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: AddExpenseDialog(
+                            currentMonth: _selectedMonth,
+                            onExpenseAdded: (Expense newlyCreatedExpense) {
+                              setState(() => allExpenses.add(newlyCreatedExpense));
+                            },
+                          )
+                        ),
+                        const SizedBox(width: 30,),
+                        
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: Wrap(
+                                  spacing: 8,
+                                  alignment: WrapAlignment.start,
+                                  children: _filters.map((filterName) {
+                                    bool isSelected = _activeFilter == filterName;
+
+                                    return ChoiceChip(
+                                      label: Text(filterName),
+                                      selected: isSelected,
+                                      onSelected: (bool userClickedIt) {
+                                        onFilterChanged(filterName);
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                              const SizedBox(height: 20,),
+                              _populateLedgerLists()
+                            ],
+                          )
+                        )
+                      ],
+                    );
+                  }
+
+                  return _populateLedgerLists();
+                }
+              ),
+            ],
+          )
+        ),
       ),
     );
   }

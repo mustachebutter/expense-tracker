@@ -54,55 +54,22 @@ class LedgerList extends StatelessWidget
                     Text(DateFormat("MMMM yyyy").format(selectedMonth), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                subtitle: Padding(
-                  padding: EdgeInsetsGeometry.only(top: 10),
-                  child: Wrap(
-                      spacing: 20,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            text: "Income: ",
-                            style: textStyle.bodySmall!.copyWith(color: variableTextColor),
-                            children: [
-                              TextSpan(
-                                text: "\$${totalIncome.toStringAsFixed(2)}",
-                                style: textStyle.bodySmall!.copyWith(
-                                  color: variableAmountTextColor,
-                                  fontWeight: FontWeight.bold
-                                ),
-                              )
-                            ]
-                          )
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Expenses: ",
-                            style: textStyle.bodySmall!.copyWith(color: variableTextColor),
-                            children: [
-                              TextSpan(
-                                text: "\$${expense.toStringAsFixed(2)}",
-                                style: textStyle.bodySmall!.copyWith(color: variableAmountTextColor,
-                                fontWeight: FontWeight.bold
-                              ),
-                              )
-                            ]
-                          )
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            text: "Cash Flow: ",
-                            style: textStyle.bodySmall!.copyWith(color: Colors.green,),
-                            children: [
-                              TextSpan(
-                                text: "\$${cashFlow.toStringAsFixed(2)}",
-                                style: textStyle.bodySmall!.copyWith(color: Colors.green, fontWeight: FontWeight.bold),
-                              )
-                            ]
-                          )
-                        ),
-                      ],
-                    )
-                  ),
+                subtitle: LayoutBuilder(builder: (context, constraints) {
+                  bool isMobile = constraints.maxWidth < 450;
+
+                  return Padding(
+                    padding: EdgeInsetsGeometry.only(top: 10),
+                    child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStatBlock("Income: ", totalIncome, variableTextColor, variableAmountTextColor, isMobile, textStyle),
+                          _buildStatBlock("Expenses: ", totalIncome, variableTextColor, variableAmountTextColor, isMobile, textStyle),
+                          _buildStatBlock("Cash Flow: ", totalIncome, Colors.green, Colors.green, isMobile, textStyle),
+                        ],
+                      )
+                    );
+                  }
+                ),
                 initiallyExpanded: isInitiallyExpanded,
                 shape: Border.all(color: Colors.transparent, width: 0),
                 tilePadding: EdgeInsets.all(20.0),
@@ -249,5 +216,36 @@ class LedgerList extends StatelessWidget
         ),
       ],
     );
+  }
+
+  Widget _buildStatBlock(String label, double amount, Color labelColor, Color amountColor, bool isMobile, TextTheme textStyle)
+  {
+    if (isMobile)
+    {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: textStyle.bodySmall!.copyWith(color: labelColor,),),
+          const SizedBox(height: 2,),
+          Text("\$${amount.toStringAsFixed(2)}", style: textStyle.bodySmall!.copyWith(color: amountColor, fontWeight: FontWeight.bold),)
+        ],
+      );
+    }
+    else
+    {
+      return Text.rich(
+        TextSpan(
+          text: label,
+          style: textStyle.bodySmall!.copyWith(color: labelColor,),
+          children: [
+            TextSpan(
+              text: "\$${amount.toStringAsFixed(2)}",
+              style: textStyle.bodySmall!.copyWith(color: amountColor, fontWeight: FontWeight.bold),
+            )
+          ]
+        )
+      );
+    }
   }
 }

@@ -60,7 +60,8 @@ class LedgerList extends StatelessWidget
                   return Padding(
                     padding: EdgeInsetsGeometry.only(top: 10),
                     child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: isMobile ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
+                        spacing: isMobile ? 5 : 10,
                         children: [
                           _buildStatBlock("Income: ", totalIncome, variableTextColor, variableAmountTextColor, isMobile, textStyle),
                           _buildStatBlock("Expenses: ", totalIncome, variableTextColor, variableAmountTextColor, isMobile, textStyle),

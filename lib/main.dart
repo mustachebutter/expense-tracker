@@ -131,6 +131,10 @@ class ExpenseAppState extends State<ExpenseApp> {
         })
       )
     ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: Color(0xFFF5F5F5),
+      foregroundColor: Colors.black54
+    )
   );
 
   final ThemeData darkTheme = ThemeData(
@@ -208,6 +212,10 @@ class ExpenseAppState extends State<ExpenseApp> {
         })
       )
     ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: Color(0xFF1A1A1A),
+      foregroundColor: Colors.white
+    )
   );
 
   void _toggleTheme() {

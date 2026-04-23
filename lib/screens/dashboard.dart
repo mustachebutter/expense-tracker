@@ -136,6 +136,9 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
+    final TextStyle titleTextStyle = screenWidth < 600
+      ? TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
+      : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
     return Scaffold(
       floatingActionButton: screenWidth < 600
         ? FloatingActionButton(
@@ -184,27 +187,36 @@ class _DashboardState extends State<Dashboard> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    children: [
-                      const Text("Expense Tracker", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                      const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
-                    ],
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Expense Tracker", style: titleTextStyle),
+                        const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
+                      ],
+                    ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.settings),
-                        onPressed: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.dark_mode),
-                        onPressed: widget.onThemeToggle,
-                      ),
-                    ],
-                  )
+                  Expanded(
+                    flex: 1,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.settings),
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.dark_mode),
+                          onPressed: widget.onThemeToggle,
+                        ),
+                      ],
+                    )
+                  ),
                 ],
               ),
 

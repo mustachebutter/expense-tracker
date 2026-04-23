@@ -175,16 +175,24 @@ class LedgerList extends StatelessWidget
                             ],
                           )
                         ),
-                        trailing: Row( 
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
-                            const SizedBox(width: 16),
-                            IconButton( 
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => onDelete(expense.id),
-                            )
-                          ],
+                        trailing: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 150),
+                          child: Row( 
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerRight,
+                                  child: Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
+                                ),
+                              ),
+                              IconButton( 
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => onDelete(expense.id),
+                              )
+                            ],
+                          )
                         )
                       );
                     },

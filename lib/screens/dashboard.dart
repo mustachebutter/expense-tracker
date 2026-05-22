@@ -1,3 +1,5 @@
+import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/models/expense.dart';
 import 'package:expense_tracker/screens/settings.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
@@ -8,8 +10,9 @@ import 'package:intl/intl.dart';
 
 class Dashboard extends StatefulWidget {
   final VoidCallback onThemeToggle;
+  final AppDatabase db;
   
-  const Dashboard({super.key, required this.onThemeToggle});
+  const Dashboard({super.key, required this.onThemeToggle, required this.db});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -19,43 +22,15 @@ class _DashboardState extends State<Dashboard> {
   final DateTime _selectedMonth = DateTime.now();
   final DateTime _startMonth = DateTime(2026, 3);
   final DateTime _endMonth = DateTime.now();
-
-  List<({double income, DateTime date})> allIncome = [
-    (income: 2908.31 * 2, date: DateTime(2026, 3)),
-    (income: 2908.31 * 2, date: DateTime(2026, 4)),
-  ];
-
-  List<Expense> allExpenses = [
-    Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-    Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-    Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
-    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
-  ];
   
   final List<String> _filters = ["All", "Food", "Transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
 
-  final List<Expense> _fixedExpenseTemplates = [
-    Expense(
-      id: "template_rent",
-      label: "Rent",
-      fixedAmount: 1100.00,
-      date: DateTime.now(),
-      tags: ["Fixed"],
-    ),
-    Expense(
-      id: "template_internet",
-      label: "Internet and Phone",
-      fixedAmount: 163.85,
-      date: DateTime.now(),
-      tags: ["Fixed"],
-    ),
-  ];
 
   String _activeFilter = "All";
 
   List<Expense> _generateVariableExpensesOfFilter(DateTime targetDatetime)
   {
-    var expenses = allExpenses.where((e) =>
+    var expenses = AppConstants.allExpenses.where((e) =>
       e.date.year == targetDatetime.year && e.date.month == targetDatetime.month && !e.tags.contains("Fixed")
     ).toList();
 
@@ -65,7 +40,7 @@ class _DashboardState extends State<Dashboard> {
   
   void _generateFixedExpensesForMonth(DateTime targetDatetime)
   {
-    bool alreadyGenerated = allExpenses.any((e) => 
+    bool alreadyGenerated = AppConstants.allExpenses.any((e) => 
       e.date.year == targetDatetime.year &&
       e.date.month == targetDatetime.month &&
       e.tags.contains("Fixed")
@@ -74,8 +49,8 @@ class _DashboardState extends State<Dashboard> {
     if (alreadyGenerated) return;
 
     setState(() {
-      for (var template in _fixedExpenseTemplates) {
-        allExpenses.add(
+      for (var template in AppConstants.fixedExpenseTemplates) {
+        AppConstants.allExpenses.add(
           Expense(id: '${template.id}_${targetDatetime.millisecondsSinceEpoch}',
           label: template.label,
           fixedAmount: template.fixedAmount,
@@ -98,7 +73,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   double totalIncomeOfMonth(DateTime monthToFind) {
-    return allIncome.firstWhere((item) => item.date.month == monthToFind.month).income;
+    return AppConstants.allIncome.firstWhere((item) => item.date.month == monthToFind.month).income;
   }
 
   double totalExpenseOfFilterOfMonth(DateTime monthToFind) {
@@ -107,7 +82,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   double totalExpenseOfMonth(DateTime monthToFind) {
-    var expenses = allExpenses.where((e) =>
+    var expenses = AppConstants.allExpenses.where((e) =>
       e.date.year == monthToFind.year && e.date.month == monthToFind.month
     ).toList();
 
@@ -118,8 +93,8 @@ class _DashboardState extends State<Dashboard> {
     return totalIncomeOfMonth(monthToFind) - totalExpenseOfMonth(monthToFind);
   }
 
-  double get totalIncome => allIncome.fold(0, (sum, item) => sum + item.income);
-  double get totalOut => allExpenses.fold(0, (sum, item) => sum + item.total);
+  double get totalIncome => AppConstants.allIncome.fold(0, (sum, item) => sum + item.income);
+  double get totalOut => AppConstants.allExpenses.fold(0, (sum, item) => sum + item.total);
   double get cashFlow => totalIncome - totalOut;
 
   @override
@@ -140,6 +115,20 @@ class _DashboardState extends State<Dashboard> {
       ? TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
       : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.dark_mode),
+            onPressed: widget.onThemeToggle,
+          ),
+        ],
+      ),
       floatingActionButton: screenWidth < 600
         ? FloatingActionButton(
           onPressed: () {
@@ -163,7 +152,7 @@ class _DashboardState extends State<Dashboard> {
                         AddExpenseDialog(
                           currentMonth: _selectedMonth,
                           onExpenseAdded: (Expense newlyCreatedExpense) {
-                            setState(() => allExpenses.add(newlyCreatedExpense));
+                            setState(() => AppConstants.allExpenses.add(newlyCreatedExpense));
                             // NOTE: This needs to be here as an exclusive for mobile
                             // on PC and web there won't be any modal to close! so it would errored out
                             Navigator.pop(context);
@@ -181,7 +170,7 @@ class _DashboardState extends State<Dashboard> {
         : null,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(40.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -198,24 +187,6 @@ class _DashboardState extends State<Dashboard> {
                         const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
                       ],
                     ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.settings),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.dark_mode),
-                          onPressed: widget.onThemeToggle,
-                        ),
-                      ],
-                    )
                   ),
                 ],
               ),
@@ -256,7 +227,7 @@ class _DashboardState extends State<Dashboard> {
                           child: AddExpenseDialog(
                             currentMonth: _selectedMonth,
                             onExpenseAdded: (Expense newlyCreatedExpense) {
-                              setState(() => allExpenses.add(newlyCreatedExpense));
+                              setState(() => AppConstants.allExpenses.add(newlyCreatedExpense));
                             },
                           )
                         ),
@@ -315,12 +286,12 @@ class _DashboardState extends State<Dashboard> {
       lists.add(
         LedgerList(
           selectedMonth: currentMonth,
-          fixedExpenses: [for(var e in allExpenses) if (e.tags.contains("Fixed") && e.date.year == currentMonth.year && e.date.month == currentMonth.month) e],
+          fixedExpenses: [for(var e in AppConstants.allExpenses) if (e.tags.contains("Fixed") && e.date.year == currentMonth.year && e.date.month == currentMonth.month) e],
           variableExpenses: _generateVariableExpensesOfFilter(currentMonth),
           monthStat: (totalIncomeOfMonth(currentMonth),totalExpenseOfMonth(currentMonth), totalCashFlowOfMonth(currentMonth)),
           activeFilter: _activeFilter,
           onDelete: (String idToDelete) {
-            setState(() => allExpenses.removeWhere((e) => e.id == idToDelete));
+            setState(() => AppConstants.allExpenses.removeWhere((e) => e.id == idToDelete));
           },
           isInitiallyExpanded: counter == 1 ? true : false,
         )

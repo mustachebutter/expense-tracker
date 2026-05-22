@@ -1,15 +1,29 @@
+import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/models/expense.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const ExpenseApp());
+void main() async{
+  // Ensure Flutter engine is ready before we do networking
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://kthgwdyeiiqfeixqkoai.supabase.co',
+    anonKey: '***REMOVED***',
+  );
+  
+  final localDb = AppDatabase();
+
+  runApp(ExpenseApp(db: localDb));
 }
 
-class AppColors {
+class AppConstants {
   //NOTE: Private constructor prevents anyone from instantiating this class
-  AppColors._();
+  AppConstants._();
 
   static const Color primaryBlue = Color(0xFF0D47A1);
   static const Map<String, Map<String, Object>> categories = {
@@ -43,16 +57,58 @@ class AppColors {
     },
   };
 
+  static Map monthlyIncome = {
+    "income_1": 2908.31 * 2,
+  };
+
+  static Map financialGoals = {
+    "Savings": 1500.0,
+    "Investing": 1000.0,
+  };
+
+  static List<Expense> fixedExpenseTemplates = [
+    Expense(
+      id: "template_rent",
+      label: "Rent",
+      fixedAmount: 1100.00,
+      date: DateTime.now(),
+      tags: ["Fixed"],
+    ),
+    Expense(
+      id: "template_internet",
+      label: "Internet and Phone",
+      fixedAmount: 163.85,
+      date: DateTime.now(),
+      tags: ["Fixed"],
+    ),
+  ];
+
+  static List<({double income, DateTime date})> allIncome = [
+    (income: 2908.31 * 2, date: DateTime(2026, 3)),
+    (income: 2908.31 * 2, date: DateTime(2026, 4)),
+    (income: 2908.31 * 2, date: DateTime(2026, 5)),
+  ];
+
+  static List<Expense> allExpenses = [
+    Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+    Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+    Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
+    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+    Expense(id: '5', label: 'Hydro', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 5, 11)),
+  ];
 }
 class ExpenseApp extends StatefulWidget {
-  const ExpenseApp({super.key});
+  final AppDatabase db;
+
+  const ExpenseApp({super.key, required this.db});
 
   @override
   State<ExpenseApp> createState() => ExpenseAppState();
 }
 
 class ExpenseAppState extends State<ExpenseApp> {
-  ThemeMode _currentMode = ThemeMode.light;
+  ThemeMode _currentMode = ThemeMode.dark;
   // ElevatedButton
 
 
@@ -71,11 +127,11 @@ class ExpenseAppState extends State<ExpenseApp> {
       error: Colors.redAccent,
     ),
     iconTheme: IconThemeData(
-      color: Colors.grey,
+      color: Colors.black,
       size: 20,
     ),
     listTileTheme: ListTileThemeData(
-      iconColor: Colors.grey,
+      iconColor: Colors.black,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -234,7 +290,10 @@ class ExpenseAppState extends State<ExpenseApp> {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: _currentMode,
-      home: Dashboard(onThemeToggle: _toggleTheme,),
+      home: Dashboard(
+        onThemeToggle: _toggleTheme,
+        db: widget.db,
+      ),
       );
   }
 }

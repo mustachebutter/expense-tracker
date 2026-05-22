@@ -155,7 +155,7 @@ class LedgerList extends StatelessWidget
                     itemBuilder: (context, index) {
                       final expense = variableExpenses[index];
                       String tag = expense.tags.isNotEmpty ? expense.tags.first : "Other";
-                      Color chipColor = AppColors.categories[tag]?["color"] as Color;
+                      Color chipColor = AppConstants.categories[tag]?["color"] as Color;
                       
                       return ListTile(
                         title: Text(expense.label, style: textStyle.bodyLarge!.copyWith(fontWeight: FontWeight.w500)),
@@ -171,7 +171,7 @@ class LedgerList extends StatelessWidget
                                 backgroundColor: chipColor.withValues(alpha: 0.1),
                                 padding: EdgeInsets.all(0.0),
                               ),
-                              const SizedBox(width: 10,),
+                              const SizedBox(width: 5,),
                               Text(DateFormat("MMM d").format(expense.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                             ],
                           )

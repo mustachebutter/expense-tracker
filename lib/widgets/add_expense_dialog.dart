@@ -64,7 +64,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
             dropdownColor: colorScheme.surface,
             icon: Icon(Icons.label),
             initialValue: _selectedTag,
-            items: AppColors.categories.entries.map((var category) {
+            items: AppConstants.categories.entries.map((var category) {
               return DropdownMenuItem<String>(
                 value: category.key,
                 child: Row(

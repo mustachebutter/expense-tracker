@@ -11,6 +11,7 @@ class Categories extends Table
   TextColumn get name => text()();
   TextColumn get colorHex => text()();
   TextColumn get userId => text()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
@@ -23,12 +24,27 @@ class Expenses extends Table
   TextColumn get name => text()();
   RealColumn get amount => real()();
   DateTimeColumn get date => dateTime()();
-  TextColumn get categoryId => text().nullable().references(Categories, #id)();
+  TextColumn get categoryId => text().references(Categories, #id)();
   TextColumn get userId => text()();
 
-  TextColumn get linkedFixedExpenseId => text().nullable()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class FixedExpenseTemplates extends Table
+{
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get amount => real()();
+  TextColumn get categoryId => text().references(Categories, #id)();
+  TextColumn get userId => text()();
+  IntColumn get billingDay => integer()();
+
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -38,9 +54,12 @@ class FixedExpenses extends Table
   TextColumn get id => text()();
   TextColumn get name => text()();
   RealColumn get amount => real()();
-  IntColumn get billingDay => integer()();
-  TextColumn get categoryId => text().nullable().references(Categories, #id)();
+  TextColumn get categoryId => text().references(Categories, #id)();
   TextColumn get userId => text()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get templateId => text().references(FixedExpenseTemplate, #id)();
+
+
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
@@ -67,6 +86,8 @@ class SavingsGoals extends Table
   TextColumn get name => text()();
   RealColumn get targetAmount => real()();
   RealColumn get currentSavedAmount => real()();
+  TextColumn get userId => text()();
+
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
@@ -79,23 +100,59 @@ class Investments extends Table
   TextColumn get id => text()();
   TextColumn get name => text()();
   RealColumn get amount => real()();
+  TextColumn get userId => text()();
+
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Categories, Expenses, FixedExpenses, Incomes, SavingsGoals, Investments])
+@DriftDatabase(tables: [Categories, Expenses, FixedExpenseTemplates, FixedExpenses, Incomes, SavingsGoals, Investments])
 class AppDatabase extends _$AppDatabase
 {
-  AppDatabase() : super(_openConnection());
+  static AppDatabase? _instance;
+  List<Category> _cachedCategories = [];
+  Map<String, Category> _categoryMap = {};
+
+  AppDatabase._internal() : super(_openConnection())
+  {
+    updateCategoryCache();
+  }
+
+  static AppDatabase get instance
+  {
+    _instance ??= AppDatabase._internal();
+    return _instance!;
+  }
 
   @override
   int get schemaVersion => 1;
 
+  Future<void> updateCategoryCache() async
+  {
+    _cachedCategories = await (select(categories)
+      ..where((t) => t.isActive.equals(true)))
+      .get();
+    _categoryMap = { for (var c in _cachedCategories) c.id : c };
+    print("Database Cache: Loaded ${_cachedCategories.length} categories in memory.");
+  }
+
+  Map<String, Category> get categoryMap => _categoryMap;
+
   Stream<List<Expense>> watchAllExpenses()
   {
     return (select(expenses)..orderBy([(t) => OrderingTerm.desc(t.date)])).watch();
+  }
+
+  Stream<List<FixedExpense>> watchAllFixedExpenses()
+  {
+    return (select(fixedExpenses)..orderBy([(t) => OrderingTerm.desc(t.date)])).watch();
+  }
+
+  Stream<List<Category>> watchAllCategories()
+  {
+    return (select(categories)..orderBy([(t) => OrderingTerm.desc(t.name)])).watch();
   }
 
   Future<int> addExpense(ExpensesCompanion entry)
@@ -124,6 +181,28 @@ class AppDatabase extends _$AppDatabase
       .write(const ExpensesCompanion(isSynced: Value(true)));
   }
 
+  Future<List<FixedExpenseTemplate>> getUnsyncedFixedExpenseTemplates()
+  {
+    return (select(fixedExpenseTemplates)..where((t) => t.isSynced.equals(false))).get();
+  }
+
+  Future<void> markFixedExpenseTemplateAsSynced(String id)
+  {
+    return (update(fixedExpenseTemplates)..where((t) => t.id.equals(id)))
+      .write(const FixedExpenseTemplatesCompanion(isSynced: Value(true)));
+  }
+
+  Future<List<FixedExpense>> getUnsyncedFixedExpenses()
+  {
+    return (select(fixedExpenses)..where((t) => t.isSynced.equals(false))).get();
+  }
+
+  Future<void> markFixedExpenseAsSynced(String id)
+  {
+    return (update(fixedExpenses)..where((t) => t.id.equals(id)))
+      .write(const FixedExpensesCompanion(isSynced: Value(true)));
+  }
+
 }
 
 LazyDatabase _openConnection()
@@ -131,7 +210,8 @@ LazyDatabase _openConnection()
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'db.sqlite'));
-
+// ADD THIS LINE TEMPORARILY:
+    print("🚀 EXTREMELY IMPORTANT - DRIFT IS SAVING HERE: ${file.path}");
     return NativeDatabase.createInBackground(file);
   });
 }

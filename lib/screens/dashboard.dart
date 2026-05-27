@@ -1,18 +1,20 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/extensions/number.dart';
 import 'package:expense_tracker/main.dart';
-import 'package:expense_tracker/models/expense.dart';
 import 'package:expense_tracker/screens/settings.dart';
+import 'package:expense_tracker/sync_engine.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/ledger_list.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import "package:drift/drift.dart" as drift;
 
 class Dashboard extends StatefulWidget {
   final VoidCallback onThemeToggle;
-  final AppDatabase db;
   
-  const Dashboard({super.key, required this.onThemeToggle, required this.db});
+  const Dashboard({super.key, required this.onThemeToggle});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -23,44 +25,43 @@ class _DashboardState extends State<Dashboard> {
   final DateTime _startMonth = DateTime(2026, 3);
   final DateTime _endMonth = DateTime.now();
   
-  final List<String> _filters = ["All", "Food", "Transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
+  final List<String> _filters = ["All", "food", "transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
 
 
   String _activeFilter = "All";
 
-  List<Expense> _generateVariableExpensesOfFilter(DateTime targetDatetime)
+  List<Expense> _generateVariableExpensesOfFilter(List<Expense> expenses, DateTime targetDatetime)
   {
-    var expenses = AppConstants.allExpenses.where((e) =>
-      e.date.year == targetDatetime.year && e.date.month == targetDatetime.month && !e.tags.contains("Fixed")
+    var generatedExpenses = expenses.where((e) =>
+      e.date.year == targetDatetime.year && e.date.month == targetDatetime.month
     ).toList();
 
-    if (_activeFilter == "All") return expenses;
-    return expenses.where((e) => e.tags.contains(_activeFilter)).toList();
+    if (_activeFilter == "All") return generatedExpenses;
+    return generatedExpenses.where((e) => e.categoryId == _activeFilter).toList();
   }
   
-  void _generateFixedExpensesForMonth(DateTime targetDatetime)
+  void _generateFixedExpensesForMonth(List<Expense> expenses, DateTime targetDatetime) async
   {
-    bool alreadyGenerated = AppConstants.allExpenses.any((e) => 
+    bool alreadyGenerated = expenses.any((e) => 
       e.date.year == targetDatetime.year &&
-      e.date.month == targetDatetime.month &&
-      e.tags.contains("Fixed")
+      e.date.month == targetDatetime.month
     );
 
     if (alreadyGenerated) return;
 
-    setState(() {
-      for (var template in AppConstants.fixedExpenseTemplates) {
-        AppConstants.allExpenses.add(
-          Expense(id: '${template.id}_${targetDatetime.millisecondsSinceEpoch}',
-          label: template.label,
-          fixedAmount: template.fixedAmount,
-          variableAmount: 0.0,
-          date: DateTime(targetDatetime.year, targetDatetime.month, 1),
-          tags: List.from(template.tags),
-          )
-        );
-      }
-    });
+    var templates = await AppDatabase.instance.select(AppDatabase.instance.fixedExpenseTemplates).get();
+    for (var template in templates) {
+      final newExpense = FixedExpensesCompanion(
+        id: drift.Value('${template.id}_${targetDatetime.millisecondsSinceEpoch}'),
+        name: drift.Value(template.name),
+        amount: drift.Value(template.amount), 
+        date: drift.Value(DateTime(targetDatetime.year, targetDatetime.month, 1)),
+        categoryId: drift.Value("$template.categoryId"),
+        userId: const drift.Value(AppConstants.testUserId), //TODO: Hardcode until auth is added
+      );
+
+      await AppDatabase.instance.into(AppDatabase.instance.fixedExpenses).insert(newExpense);
+    }
   }
   
   void onFilterChanged (String newFilter) 
@@ -76,37 +77,39 @@ class _DashboardState extends State<Dashboard> {
     return AppConstants.allIncome.firstWhere((item) => item.date.month == monthToFind.month).income;
   }
 
-  double totalExpenseOfFilterOfMonth(DateTime monthToFind) {
-    var expenses = _generateVariableExpensesOfFilter(monthToFind);
-    return expenses.fold(0, (sum, item) => sum + item.fixedAmount + item.variableAmount);
+  double totalExpenseOfFilterOfMonth(List<Expense> expenses, DateTime monthToFind) {
+    return _generateVariableExpensesOfFilter(expenses, monthToFind)
+      .fold(0, (sum, item) => sum + item.amount);
   }
 
-  double totalExpenseOfMonth(DateTime monthToFind) {
-    var expenses = AppConstants.allExpenses.where((e) =>
+  double totalExpenseOfMonth(List<Expense> expenses, DateTime monthToFind) {
+    var allExpenses = expenses.where((e) =>
       e.date.year == monthToFind.year && e.date.month == monthToFind.month
     ).toList();
 
-    return expenses.fold(0, (sum, item) => sum + item.fixedAmount + item.variableAmount);
+    return allExpenses.fold(0, (sum, item) => sum + item.amount);
   }
 
-  double totalCashFlowOfMonth(DateTime monthToFind) {
-    return totalIncomeOfMonth(monthToFind) - totalExpenseOfMonth(monthToFind);
-  }
+  Future<void> _runFixedExpenseEngine() async
+  {
+    DateTime currentMonth = DateTime(_startMonth.year, _startMonth.month, 1);
+    DateTime endMonth = DateTime(_endMonth.year, _endMonth.month, 1);
 
-  double get totalIncome => AppConstants.allIncome.fold(0, (sum, item) => sum + item.income);
-  double get totalOut => AppConstants.allExpenses.fold(0, (sum, item) => sum + item.total);
-  double get cashFlow => totalIncome - totalOut;
+    final currentDbExpenses = await AppDatabase.instance.select(AppDatabase.instance.expenses).get();
+
+    while (!currentMonth.isAfter(endMonth))
+    {
+      _generateFixedExpensesForMonth(currentDbExpenses, currentMonth);
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
+    }
+
+  }
 
   @override
   void initState() {
     super.initState();
-    DateTime currentMonth = DateTime(_startMonth.year, _startMonth.month, 1);
-    DateTime endMonth = DateTime(_endMonth.year, _endMonth.month, 1);
-    while (!currentMonth.isAfter(endMonth))
-    {
-      _generateFixedExpensesForMonth(currentMonth);
-      currentMonth = DateTime(currentMonth.year, currentMonth.month + 1, 1);
-    }
+    SyncEngine(AppDatabase.instance).pushAllDataToServer();
+    _runFixedExpenseEngine();
   }
   @override
   Widget build(BuildContext context) {
@@ -115,12 +118,138 @@ class _DashboardState extends State<Dashboard> {
       ? TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
       : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
     return Scaffold(
+      body: StreamBuilder<List<FixedExpense>>(
+        stream: AppDatabase.instance.watchAllFixedExpenses(),
+        builder: (context, snapshot) {
+          final fixedExpenses = snapshot.data ?? [];
+
+          return StreamBuilder<List<Expense>>(
+            stream: AppDatabase.instance.watchAllExpenses(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting)
+              {
+                return const CircularProgressIndicator();
+              }
+
+              final expenses = snapshot.data ?? [];
+              double totalIncome = AppConstants.allIncome.sumBy((item) => item.income);
+              double totalOut = expenses.sumBy((item) => item.amount);
+              double cashFlow = totalIncome - totalOut;
+
+              return SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Expense Tracker", style: titleTextStyle),
+                                const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 30,),
+
+                      screenWidth < 600 
+                      ? Column(
+                          children: [
+                          SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,),
+                          const SizedBox(height: 20,),
+                          SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,),
+                          const SizedBox(height: 20,),
+                          SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,),
+                        ],
+                      )
+                      : Row(
+                          children: [
+                            Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
+                            const SizedBox(width: 20,),
+                            Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
+                            const SizedBox(width: 20,),
+                            Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
+                          ],
+                      ),
+
+
+                      const SizedBox(height: 30,),
+
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth > 600) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 1,
+                                  child: AddExpenseDialog(
+                                    currentMonth: _selectedMonth,
+                                    onExpenseAdded: (ExpensesCompanion newlyCreatedExpense) async {
+                                      await AppDatabase.instance.addExpense(newlyCreatedExpense);
+                                      SyncEngine(AppDatabase.instance).pushAllDataToServer();
+                                    },
+                                  )
+                                ),
+                                const SizedBox(width: 30,),
+                                
+                                Expanded(
+                                  flex: 2,
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Wrap(
+                                          spacing: 8,
+                                          alignment: WrapAlignment.start,
+                                          children: _filters.map((filterName) {
+                                            bool isSelected = _activeFilter == filterName;
+
+                                            return ChoiceChip(
+                                              label: Text(filterName),
+                                              selected: isSelected,
+                                              onSelected: (bool userClickedIt) {
+                                                onFilterChanged(filterName);
+                                              },
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20,),
+                                      _populateLedgerLists(fixedExpenses, expenses)
+                                    ],
+                                  )
+                                )
+                              ],
+                            );
+                          }
+
+                          return _populateLedgerLists(fixedExpenses, expenses);
+                        }
+                      ),
+                    ],
+                  )
+                ),
+              );
+            }
+          );
+        }
+      ),
       appBar: AppBar(
         actions: [
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => Settings()));
             },
           ),
           IconButton(
@@ -151,11 +280,16 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         AddExpenseDialog(
                           currentMonth: _selectedMonth,
-                          onExpenseAdded: (Expense newlyCreatedExpense) {
-                            setState(() => AppConstants.allExpenses.add(newlyCreatedExpense));
+                          onExpenseAdded: (ExpensesCompanion newlyCreatedExpense) async {
+                            await AppDatabase.instance.addExpense(newlyCreatedExpense);
                             // NOTE: This needs to be here as an exclusive for mobile
                             // on PC and web there won't be any modal to close! so it would errored out
-                            Navigator.pop(context);
+
+                            // (Flutter requires checking 'mounted' after an await before navigating)
+                            if (context.mounted)
+                            {
+                              Navigator.pop(context);
+                            }
                           },
                         ),
                       ],
@@ -168,113 +302,10 @@ class _DashboardState extends State<Dashboard> {
           child: const Icon(Icons.add),
         )
         : null,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Expense Tracker", style: titleTextStyle),
-                        const Text("Track and manage your spending", style: TextStyle(color: Colors.grey, fontSize: 16))
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 30,),
-
-              screenWidth < 600 
-              ? Column(
-                  children: [
-                  SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,),
-                  const SizedBox(height: 20,),
-                  SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,),
-                  const SizedBox(height: 20,),
-                  SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,),
-                ],
-              )
-              : Row(
-                  children: [
-                    Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
-                    const SizedBox(width: 20,),
-                    Expanded(child: SummaryCard(title: "Total Expense", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
-                    const SizedBox(width: 20,),
-                    Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
-                  ],
-              ),
-
-
-              const SizedBox(height: 30,),
-
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth > 600) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: AddExpenseDialog(
-                            currentMonth: _selectedMonth,
-                            onExpenseAdded: (Expense newlyCreatedExpense) {
-                              setState(() => AppConstants.allExpenses.add(newlyCreatedExpense));
-                            },
-                          )
-                        ),
-                        const SizedBox(width: 30,),
-                        
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: Wrap(
-                                  spacing: 8,
-                                  alignment: WrapAlignment.start,
-                                  children: _filters.map((filterName) {
-                                    bool isSelected = _activeFilter == filterName;
-
-                                    return ChoiceChip(
-                                      label: Text(filterName),
-                                      selected: isSelected,
-                                      onSelected: (bool userClickedIt) {
-                                        onFilterChanged(filterName);
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              const SizedBox(height: 20,),
-                              _populateLedgerLists()
-                            ],
-                          )
-                        )
-                      ],
-                    );
-                  }
-
-                  return _populateLedgerLists();
-                }
-              ),
-            ],
-          )
-        ),
-      ),
     );
   }
 
-  Widget _populateLedgerLists()
+  Widget _populateLedgerLists(List<FixedExpense> fixedExpenses, List<Expense> expenses)
   {
     DateTime currentMonth = DateTime(_endMonth.year, _endMonth.month, 1);
     DateTime endMonth = DateTime(_startMonth.year, _startMonth.month, 1);
@@ -283,15 +314,25 @@ class _DashboardState extends State<Dashboard> {
     while (!currentMonth.isBefore(_startMonth))
     {
       counter++;
+
+      final accIncomeOfMonth = totalIncomeOfMonth(currentMonth);
+      final accExpenseOfMonth = totalExpenseOfMonth(expenses, currentMonth);
+      final accCashFlowOfMonth = accIncomeOfMonth - accExpenseOfMonth;
       lists.add(
         LedgerList(
           selectedMonth: currentMonth,
-          fixedExpenses: [for(var e in AppConstants.allExpenses) if (e.tags.contains("Fixed") && e.date.year == currentMonth.year && e.date.month == currentMonth.month) e],
-          variableExpenses: _generateVariableExpensesOfFilter(currentMonth),
-          monthStat: (totalIncomeOfMonth(currentMonth),totalExpenseOfMonth(currentMonth), totalCashFlowOfMonth(currentMonth)),
+          // TODO: We should fetch fixed expenses from the list based on month too
+          fixedExpenses: fixedExpenses,
+          variableExpenses: _generateVariableExpensesOfFilter(expenses, currentMonth),
+          monthStat: (
+            accIncomeOfMonth,
+            accExpenseOfMonth,
+            accCashFlowOfMonth,
+          ),
           activeFilter: _activeFilter,
-          onDelete: (String idToDelete) {
-            setState(() => AppConstants.allExpenses.removeWhere((e) => e.id == idToDelete));
+          onDelete: (String idToDelete) async {
+            await AppDatabase.instance.deleteExpense(idToDelete);
+            SyncEngine(AppDatabase.instance).pushAllDataToServer();
           },
           isInitiallyExpanded: counter == 1 ? true : false,
         )

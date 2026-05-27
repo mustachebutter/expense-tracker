@@ -1,12 +1,13 @@
+import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/extensions/number.dart';
 import 'package:expense_tracker/main.dart';
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/models/expense.dart';
 import 'package:intl/intl.dart';
 
 class LedgerList extends StatelessWidget
 {
   final DateTime selectedMonth;
-  final List<Expense> fixedExpenses;
+  final List<FixedExpense> fixedExpenses;
   final List<Expense> variableExpenses;
   final (double, double, double) monthStat;
   final String activeFilter;
@@ -26,7 +27,7 @@ class LedgerList extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
-    double totalExpenseOfFilter() => variableExpenses.fold(0.0, (sum, item) => sum + item.fixedAmount + item.variableAmount);
+    double totalExpenseOfFilter() => variableExpenses.sumBy((item) => item.amount);
     var (totalIncome, expense, cashFlow) = monthStat;
 
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -119,11 +120,11 @@ class LedgerList extends StatelessWidget
                                 return Container(
                                   color: colorScheme.surface,
                                   child: ListTile(
-                                    title: Text(expense.label, style: textStyle.bodyMedium!.copyWith(fontWeight: FontWeight.w500)),
+                                    title: Text(expense.name, style: textStyle.bodyMedium!.copyWith(fontWeight: FontWeight.w500)),
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text("\$${expense.total.toStringAsFixed(2)}", style: textStyle.labelLarge!.copyWith(fontWeight: FontWeight.bold),),
+                                        Text("\$${expense.amount.toStringAsFixed(2)}", style: textStyle.labelLarge!.copyWith(fontWeight: FontWeight.bold),),
                                         const SizedBox(width: 16,),
                                         IconButton(
                                           onPressed: () => onDelete(expense.id),
@@ -154,11 +155,14 @@ class LedgerList extends StatelessWidget
                     separatorBuilder: (context, index) => const Divider(height: 1,),
                     itemBuilder: (context, index) {
                       final expense = variableExpenses[index];
-                      String tag = expense.tags.isNotEmpty ? expense.tags.first : "Other";
-                      Color chipColor = AppConstants.categories[tag]?["color"] as Color;
+                      String tag = expense.categoryId;
+                      final category = AppDatabase.instance.categoryMap[expense.categoryId];
+                      print(AppDatabase.instance.categoryMap);
+                      print(category);
+                      Color chipColor = Color(int.parse("FF${category!.colorHex.toUpperCase()}", radix: 16));
                       
                       return ListTile(
-                        title: Text(expense.label, style: textStyle.bodyLarge!.copyWith(fontWeight: FontWeight.w500)),
+                        title: Text(expense.name, style: textStyle.bodyLarge!.copyWith(fontWeight: FontWeight.w500)),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Row(
@@ -185,7 +189,7 @@ class LedgerList extends StatelessWidget
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerRight,
-                                  child: Text("\$${expense.total.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
+                                  child: Text("\$${expense.amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
                                 ),
                               ),
                               IconButton( 

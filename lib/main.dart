@@ -1,5 +1,4 @@
 import 'package:expense_tracker/database.dart';
-import 'package:expense_tracker/models/expense.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -16,22 +15,44 @@ void main() async{
     anonKey: '***REMOVED***',
   );
   
-  final localDb = AppDatabase();
-
-  runApp(ExpenseApp(db: localDb));
+  AppDatabase.instance;
+  await signInTestUser();
+  runApp(ExpenseApp());
 }
 
+Future<void> signInTestUser() async {
+  final supabase = Supabase.instance.client;
+  
+  // Check if we are already logged in from a previous session
+  if (supabase.auth.currentUser != null) {
+    print("Already logged in as: ${supabase.auth.currentUser!.id}");
+    return;
+  }
+
+  try {
+    print("Attempting to log in...");
+    await supabase.auth.signInWithPassword(
+      email: 'test@abc.com',   // <-- Change to your test user's email
+      password: 'testuser',  // <-- Change to your test user's password
+    );
+    print("SUCCESS! Logged in as: ${supabase.auth.currentUser!.id}");
+  } catch (e) {
+    print("Login failed: $e");
+  }
+}
 class AppConstants {
   //NOTE: Private constructor prevents anyone from instantiating this class
   AppConstants._();
 
+  //DEBUG: Only for testing, will need to implement auth
+  static const String testUserId = "3a0388fb-3d7f-4f50-a955-5daa60648cb3";
   static const Color primaryBlue = Color(0xFF0D47A1);
   static const Map<String, Map<String, Object>> categories = {
-    "Food": {
+    "food": {
       "icon": Icon(Icons.restaurant),
       "color": Color(0xFF00E6C4),
     },
-    "Transport": {
+    "transport": {
       "icon": Icon(Icons.train),
       "color": Colors.green,
     },
@@ -66,21 +87,21 @@ class AppConstants {
     "Investing": 1000.0,
   };
 
-  static List<Expense> fixedExpenseTemplates = [
-    Expense(
-      id: "template_rent",
-      label: "Rent",
-      fixedAmount: 1100.00,
-      date: DateTime.now(),
-      tags: ["Fixed"],
-    ),
-    Expense(
-      id: "template_internet",
-      label: "Internet and Phone",
-      fixedAmount: 163.85,
-      date: DateTime.now(),
-      tags: ["Fixed"],
-    ),
+  static var fixedExpenseTemplates = [
+    {
+      "id": "template_rent",
+      "label": "Rent",
+      "fixedAmount": 1100.00,
+      "date": DateTime.now(),
+      "tags": ["Fixed"],
+    },
+    {
+      "id": "template_internet",
+      "label": "Internet and Phone",
+      "fixedAmount": 163.85,
+      "date": DateTime.now(),
+      "tags": ["Fixed"],
+    },
   ];
 
   static List<({double income, DateTime date})> allIncome = [
@@ -89,19 +110,17 @@ class AppConstants {
     (income: 2908.31 * 2, date: DateTime(2026, 5)),
   ];
 
-  static List<Expense> allExpenses = [
-    Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-    Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-    Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
-    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
-    Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
-    Expense(id: '5', label: 'Hydro', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 5, 11)),
-  ];
+  // static List<Expense> allExpenses = [
+  //   Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+  //   Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+  //   Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
+  //   Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+  //   Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+  //   Expense(id: '5', label: 'Hydro', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 5, 11)),
+  // ];
 }
 class ExpenseApp extends StatefulWidget {
-  final AppDatabase db;
-
-  const ExpenseApp({super.key, required this.db});
+  const ExpenseApp({super.key});
 
   @override
   State<ExpenseApp> createState() => ExpenseAppState();
@@ -292,7 +311,6 @@ class ExpenseAppState extends State<ExpenseApp> {
       themeMode: _currentMode,
       home: Dashboard(
         onThemeToggle: _toggleTheme,
-        db: widget.db,
       ),
       );
   }

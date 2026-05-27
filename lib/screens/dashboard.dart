@@ -108,7 +108,8 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    SyncEngine(AppDatabase.instance).pushAllDataToServer();
+    SyncEngine.instance.pullAllDataFromServer();
+    SyncEngine.instance.pushAllDataToServer();
     _runFixedExpenseEngine();
   }
   @override
@@ -196,7 +197,7 @@ class _DashboardState extends State<Dashboard> {
                                     currentMonth: _selectedMonth,
                                     onExpenseAdded: (ExpensesCompanion newlyCreatedExpense) async {
                                       await AppDatabase.instance.addExpense(newlyCreatedExpense);
-                                      SyncEngine(AppDatabase.instance).pushAllDataToServer();
+                                      SyncEngine.instance.pushAllDataToServer();
                                     },
                                   )
                                 ),
@@ -332,7 +333,7 @@ class _DashboardState extends State<Dashboard> {
           activeFilter: _activeFilter,
           onDelete: (String idToDelete) async {
             await AppDatabase.instance.deleteExpense(idToDelete);
-            SyncEngine(AppDatabase.instance).pushAllDataToServer();
+            SyncEngine.instance.pushAllDataToServer();
           },
           isInitiallyExpanded: counter == 1 ? true : false,
         )

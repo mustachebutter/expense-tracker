@@ -1,4 +1,5 @@
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -15,7 +16,8 @@ void main() async{
     anonKey: '***REMOVED***',
   );
   
-  AppDatabase.instance;
+  final db = AppDatabase.instance;
+  SyncEngine.initialize(db);
   await signInTestUser();
   runApp(ExpenseApp());
 }
@@ -48,6 +50,10 @@ class AppConstants {
   static const String testUserId = "3a0388fb-3d7f-4f50-a955-5daa60648cb3";
   static const Color primaryBlue = Color(0xFF0D47A1);
   static const Map<String, Map<String, Object>> categories = {
+    "bills": {
+      "icon": Icon(Icons.money),
+      "color": Colors.black,
+    },
     "food": {
       "icon": Icon(Icons.restaurant),
       "color": Color(0xFF00E6C4),

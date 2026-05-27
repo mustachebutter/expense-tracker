@@ -139,6 +139,7 @@ class AppDatabase extends _$AppDatabase
   }
 
   Map<String, Category> get categoryMap => _categoryMap;
+  List<Category> get categoryList => _cachedCategories;
 
   Stream<List<Expense>> watchAllExpenses()
   {

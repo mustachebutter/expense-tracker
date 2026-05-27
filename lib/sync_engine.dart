@@ -1,17 +1,39 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:expense_tracker/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'database.dart';
 
 class SyncEngine
 {
-  final supabase = Supabase.instance.client;
-  final AppDatabase localDb;
+  static SyncEngine? _instance;
+  
+  late final AppDatabase _db;
+  late final SupabaseClient _supabase;
 
-  SyncEngine(this.localDb);
+  SyncEngine._internal(this._db)
+  {
+    _supabase = Supabase.instance.client;
+  }
+
+  static void initialize(AppDatabase db)
+  {
+    _instance ??= SyncEngine._internal(db);
+  }
+
+  static SyncEngine get instance 
+  {
+    if (_instance == null)
+    {
+      throw Exception("SyncEngine must be initialized before use! Call SyncEngine.initialize(db) in main().");
+    }
+
+    return _instance!;
+  }
+
 
   Future<void> pushAllDataToServer() async
   {
-    // final currentUser = supabase.auth.currentUser;
+    // final currentUser = _supabase.auth.currentUser;
     // if (currentUser == null)
     // {
     //   print("Cannot sync: No user is logged in");
@@ -29,7 +51,7 @@ class SyncEngine
 
   Future<void> _syncExpenses(String userId) async
   {
-    final unsyncedExpenses = await localDb.getUnsyncedExpenses();
+    final unsyncedExpenses = await _db.getUnsyncedExpenses();
 
     if (unsyncedExpenses.isEmpty)
     {
@@ -41,7 +63,7 @@ class SyncEngine
     {
       try
       {
-        await supabase.from('expenses').insert(
+        await _supabase.from('expenses').insert(
           {
             "id": expense.id,
             "name": expense.name,
@@ -52,7 +74,7 @@ class SyncEngine
           }
         );
 
-        await localDb.markExpenseAsSynced(expense.id);
+        await _db.markExpenseAsSynced(expense.id);
         print("Successfully synced expense: ${expense.name}");
       }
       catch (e)
@@ -64,13 +86,13 @@ class SyncEngine
 
   Future<void> _syncFixedExpenseTemplates(String userId) async
   {
-    final unsyncedTemplates = await localDb.getUnsyncedFixedExpenseTemplates();
+    final unsyncedTemplates = await _db.getUnsyncedFixedExpenseTemplates();
 
     for (var template in unsyncedTemplates)
     {
       try
       {
-        await supabase.from("fixed_expense_templates").upsert(
+        await _supabase.from("fixed_expense_templates").upsert(
           {
             "id": template.id,
             "name": template.name,
@@ -81,7 +103,7 @@ class SyncEngine
           }
         );
 
-        await localDb.markFixedExpenseTemplateAsSynced(template.id);
+        await _db.markFixedExpenseTemplateAsSynced(template.id);
       }
       catch (e)
       {
@@ -92,13 +114,13 @@ class SyncEngine
 
   Future<void> _syncFixedExpenses(String userId) async
   {
-    final unsyncedFixed = await localDb.getUnsyncedFixedExpenses();
+    final unsyncedFixed = await _db.getUnsyncedFixedExpenses();
 
     for (var fixedBill in unsyncedFixed)
     {
       try
       {
-        await supabase.from("fixed_expenses").upsert(
+        await _supabase.from("fixed_expenses").upsert(
           {
             "id": fixedBill.id,
             "name": fixedBill.name,
@@ -109,12 +131,59 @@ class SyncEngine
           }
         );
 
-        await localDb.markFixedExpenseAsSynced(fixedBill.id);
+        await _db.markFixedExpenseAsSynced(fixedBill.id);
       }
       catch (e)
       {
         print("Failed to sync template ${fixedBill.id}: $e");
       }
+    }
+  }
+
+  Future<void> pullAllDataFromServer() async 
+  {
+    // final currentUser = _supabase.auth.currentUser;
+    // if (currentUser == null)
+    // {
+    //   print("Cannot sync: No user is logged in");
+    //   return;
+    // } 
+
+    // await _syncExpenses(currentUser.id);
+    // await _syncFixedExpenseTemplates(currentUser.id);
+    // await _syncFixedExpenses(currentUser.id);
+    // DEBUG: Test only!
+    await _pullCategories(AppConstants.testUserId);
+  }
+
+  Future<void> _pullCategories(String userId) async
+  {
+    try
+    {
+      final data = await _supabase.from("categories").select().eq("user_id", userId);
+
+      for (var row in data)
+      {
+        await _db.into(_db.categories).insertOnConflictUpdate(
+          CategoriesCompanion(
+            id: drift.Value(row["id"]),
+            name: drift.Value(row["name"]),
+            colorHex: drift.Value(row["color_hex"]),
+            // iconKey: drift.Value(row["icon_key"]),
+            userId: drift.Value(row["user_id"]),
+            isActive: drift.Value(row["is_active"]),
+            isSynced: drift.Value(true), // Pull from cloud so it is already synced
+          )
+        );
+      }
+
+      await _db.updateCategoryCache();
+      print("SyncEngine: Synchronized ${data.length} categories.");
+    }
+    catch (e)
+    {
+      print("SyncEngine: Error pulling categories: $e");
+      rethrow;
     }
   }
 }

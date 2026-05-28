@@ -159,7 +159,7 @@ class LedgerList extends StatelessWidget
                       final category = AppDatabase.instance.categoryMap[expense.categoryId];
                       print(AppDatabase.instance.categoryMap);
                       print(category);
-                      Color chipColor = Color(int.parse("FF${category!.colorHex.toUpperCase()}", radix: 16));
+                      Color chipColor = AppConstants.getColorFromHex(category?.colorHex ?? "9E9E9E");
                       
                       return ListTile(
                         title: Text(expense.name, style: textStyle.bodyLarge!.copyWith(fontWeight: FontWeight.w500)),

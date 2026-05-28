@@ -149,11 +149,11 @@ class SyncEngine
     //   return;
     // } 
 
-    // await _syncExpenses(currentUser.id);
-    // await _syncFixedExpenseTemplates(currentUser.id);
-    // await _syncFixedExpenses(currentUser.id);
     // DEBUG: Test only!
     await _pullCategories(AppConstants.testUserId);
+    await _pullExpenses(AppConstants.testUserId);
+    await _pullFixedExpenses(AppConstants.testUserId);
+    await _pullFixedExpenseTemplates(AppConstants.testUserId);
   }
 
   Future<void> _pullCategories(String userId) async
@@ -169,7 +169,7 @@ class SyncEngine
             id: drift.Value(row["id"]),
             name: drift.Value(row["name"]),
             colorHex: drift.Value(row["color_hex"]),
-            // iconKey: drift.Value(row["icon_key"]),
+            iconKey: drift.Value(row["icon_key"]),
             userId: drift.Value(row["user_id"]),
             isActive: drift.Value(row["is_active"]),
             isSynced: drift.Value(true), // Pull from cloud so it is already synced
@@ -183,6 +183,102 @@ class SyncEngine
     catch (e)
     {
       print("SyncEngine: Error pulling categories: $e");
+      rethrow;
+    }
+  }
+
+
+  Future<void> _pullExpenses(String userId) async
+  {
+    try
+    {
+      final data = await _supabase.from("expenses").select().eq("user_id", userId);
+
+      for (var row in data)
+      {
+        await _db.into(_db.expenses).insertOnConflictUpdate(
+          ExpensesCompanion(
+            id: drift.Value(row["id"]),
+            name: drift.Value(row["name"]),
+            amount: drift.Value((row["amount"] as num).toDouble()),
+            date: drift.Value(DateTime.parse(row["date"].toString())),
+            categoryId: drift.Value(row["category_id"]),
+            userId: drift.Value(row["user_id"]),
+            isSynced: drift.Value(true), // Pull from cloud so it is already synced
+          )
+        );
+      }
+
+      print("SyncEngine: Synchronized ${data.length} expenses.");
+    }
+    catch (e)
+    {
+      print("SyncEngine: Error pulling expenses: $e");
+      rethrow;
+    }
+  }
+
+
+  Future<void> _pullFixedExpenses(String userId) async
+  {
+    try
+    {
+      final data = await _supabase.from("fixed_expenses").select().eq("user_id", userId);
+
+      for (var row in data)
+      {
+        await _db.into(_db.fixedExpenses).insertOnConflictUpdate(
+          FixedExpensesCompanion(
+            id: drift.Value(row["id"]),
+            name: drift.Value(row["name"]),
+            amount: drift.Value((row["amount"] as num).toDouble()),
+            categoryId: drift.Value(row["category_id"]),
+            userId: drift.Value(row["user_id"]),
+            date: drift.Value(DateTime.parse(row["date"].toString())),
+            templateId: drift.Value(row["template_id"]),
+            isActive: drift.Value(row["is_active"]),
+            isSynced: drift.Value(true), // Pull from cloud so it is already synced
+          )
+        );
+      }
+
+      print("SyncEngine: Synchronized ${data.length} fixed expenses");
+    }
+    catch (e)
+    {
+      print("SyncEngine: Error pulling fixed expenses: $e");
+      rethrow;
+    }
+  }
+
+  
+  Future<void> _pullFixedExpenseTemplates(String userId) async
+  {
+    try
+    {
+      final data = await _supabase.from("fixed_expense_templates").select().eq("user_id", userId);
+
+      for (var row in data)
+      {
+        await _db.into(_db.fixedExpenseTemplates).insertOnConflictUpdate(
+          FixedExpenseTemplatesCompanion(
+            id: drift.Value(row["id"]),
+            name: drift.Value(row["name"]),
+            amount: drift.Value((row["amount"] as num).toDouble()),
+            categoryId: drift.Value(row["category_id"]),
+            userId: drift.Value(row["user_id"]),
+            billingDay: drift.Value(row["billing_day"]),
+            isActive: drift.Value(row["is_active"]),
+            isSynced: drift.Value(true), // Pull from cloud so it is already synced
+          )
+        );
+      }
+
+      print("SyncEngine: Synchronized ${data.length} fixed expense templates.");
+    }
+    catch (e)
+    {
+      print("SyncEngine: Error pulling fixed expense templates: $e");
       rethrow;
     }
   }

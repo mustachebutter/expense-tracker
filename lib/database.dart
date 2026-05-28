@@ -10,6 +10,7 @@ class Categories extends Table
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get colorHex => text()();
+  TextColumn get iconKey => text()();
   TextColumn get userId => text()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
@@ -57,7 +58,7 @@ class FixedExpenses extends Table
   TextColumn get categoryId => text().references(Categories, #id)();
   TextColumn get userId => text()();
   DateTimeColumn get date => dateTime()();
-  TextColumn get templateId => text().references(FixedExpenseTemplate, #id)();
+  TextColumn get templateId => text().references(FixedExpenseTemplates, #id)();
 
 
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
@@ -211,7 +212,7 @@ LazyDatabase _openConnection()
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'db.sqlite'));
-// ADD THIS LINE TEMPORARILY:
+    // ADD THIS LINE TEMPORARILY:
     print("🚀 EXTREMELY IMPORTANT - DRIFT IS SAVING HERE: ${file.path}");
     return NativeDatabase.createInBackground(file);
   });

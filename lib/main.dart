@@ -48,41 +48,63 @@ class AppConstants {
 
   //DEBUG: Only for testing, will need to implement auth
   static const String testUserId = "3a0388fb-3d7f-4f50-a955-5daa60648cb3";
-  static const Color primaryBlue = Color(0xFF0D47A1);
-  static const Map<String, Map<String, Object>> categories = {
-    "bills": {
-      "icon": Icon(Icons.money),
-      "color": Colors.black,
-    },
-    "food": {
-      "icon": Icon(Icons.restaurant),
-      "color": Color(0xFF00E6C4),
-    },
-    "transport": {
-      "icon": Icon(Icons.train),
-      "color": Colors.green,
-    },
-    "Entertainment": {
-      "icon": Icon(Icons.videogame_asset),
-      "color": Colors.blue,
-    },
-    "Shopping": {
-      "icon": Icon(Icons.shopping_bag),
-      "color": Colors.orange,
-    },
-    "Utility": {
-      "icon": Icon(Icons.electric_bolt),
-      "color": Colors.deepPurpleAccent,
-    },
-    "Health": {
-      "icon": Icon(Symbols.health_cross),
-      "color": Colors.red,
-    },
-    "Other": {
-      "icon": Icon(Symbols.more_horiz),
-      "color": Colors.grey,
-    },
+
+  static const Map<String, IconData> _iconMap = {
+    "attach_money": Icons.attach_money,
+    "restaurant": Icons.restaurant,
+    "train": Icons.train,
+    "videogame_asset": Icons.videogame_asset,
+    "shopping_bag": Icons.shopping_bag,
+    "electric_bolt": Icons.electric_bolt,
+    "health_cross": Symbols.health_cross,
+    "more_horiz": Symbols.more_horiz,
   };
+
+  static Icon getIcon(String key)
+  {
+    return Icon(_iconMap[key] ?? Icons.help_outline);
+  }
+
+  static Color getColorFromHex(String colorHex)
+  {
+    return Color(int.parse("FF${colorHex.toUpperCase()}", radix: 16));
+  }
+
+  static const Color primaryBlue = Color(0xFF0D47A1);
+  // static const Map<String, Map<String, Object>> categories = {
+  //   "bills": {
+  //     "icon": Icon(Icons.money),
+  //     "color": Colors.black,
+  //   },
+  //   "food": {
+  //     "icon": Icon(Icons.restaurant),
+  //     "color": Color(0xFF00E6C4),
+  //   },
+  //   "transport": {
+  //     "icon": Icon(Icons.train),
+  //     "color": Colors.green,
+  //   },
+  //   "Entertainment": {
+  //     "icon": Icon(Icons.videogame_asset),
+  //     "color": Colors.blue,
+  //   },
+  //   "Shopping": {
+  //     "icon": Icon(Icons.shopping_bag),
+  //     "color": Colors.orange,
+  //   },
+  //   "Utility": {
+  //     "icon": Icon(Icons.electric_bolt),
+  //     "color": Colors.deepPurpleAccent,
+  //   },
+  //   "Health": {
+  //     "icon": Icon(Symbols.health_cross),
+  //     "color": Colors.red,
+  //   },
+  //   "Other": {
+  //     "icon": Icon(Symbols.more_horiz),
+  //     "color": Colors.grey,
+  //   },
+  // };
 
   static Map monthlyIncome = {
     "income_1": 2908.31 * 2,

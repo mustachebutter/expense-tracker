@@ -25,7 +25,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    print(AppConstants.categories["food"]);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -72,12 +71,12 @@ class _AddExpenseDialogState extends State<AddExpenseDialog>
                 value: category.id,
                 child: Row(
                   children: [
-                    AppConstants.categories[category.id]!["icon"] as Icon,
+                    AppConstants.getIcon(category.iconKey),
                     SizedBox(width: 10,),
                     Text(
                       category.name,
                       style: TextStyle(
-                        color: Color(int.parse("FF${category.colorHex.toUpperCase()}", radix: 16)),
+                        color: AppConstants.getColorFromHex(category.colorHex),
                       )
                     ),
                   ],

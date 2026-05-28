@@ -38,6 +38,17 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _iconKeyMeta = const VerificationMeta(
+    'iconKey',
+  );
+  @override
+  late final GeneratedColumn<String> iconKey = GeneratedColumn<String>(
+    'icon_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
@@ -82,6 +93,7 @@ class $CategoriesTable extends Categories
     id,
     name,
     colorHex,
+    iconKey,
     userId,
     isActive,
     isSynced,
@@ -118,6 +130,14 @@ class $CategoriesTable extends Categories
       );
     } else if (isInserting) {
       context.missing(_colorHexMeta);
+    }
+    if (data.containsKey('icon_key')) {
+      context.handle(
+        _iconKeyMeta,
+        iconKey.isAcceptableOrUnknown(data['icon_key']!, _iconKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconKeyMeta);
     }
     if (data.containsKey('user_id')) {
       context.handle(
@@ -160,6 +180,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}color_hex'],
       )!,
+      iconKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_key'],
+      )!,
       userId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
@@ -185,6 +209,7 @@ class Category extends DataClass implements Insertable<Category> {
   final String id;
   final String name;
   final String colorHex;
+  final String iconKey;
   final String userId;
   final bool isActive;
   final bool isSynced;
@@ -192,6 +217,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.id,
     required this.name,
     required this.colorHex,
+    required this.iconKey,
     required this.userId,
     required this.isActive,
     required this.isSynced,
@@ -202,6 +228,7 @@ class Category extends DataClass implements Insertable<Category> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['color_hex'] = Variable<String>(colorHex);
+    map['icon_key'] = Variable<String>(iconKey);
     map['user_id'] = Variable<String>(userId);
     map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -213,6 +240,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: Value(id),
       name: Value(name),
       colorHex: Value(colorHex),
+      iconKey: Value(iconKey),
       userId: Value(userId),
       isActive: Value(isActive),
       isSynced: Value(isSynced),
@@ -228,6 +256,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       colorHex: serializer.fromJson<String>(json['colorHex']),
+      iconKey: serializer.fromJson<String>(json['iconKey']),
       userId: serializer.fromJson<String>(json['userId']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -240,6 +269,7 @@ class Category extends DataClass implements Insertable<Category> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'colorHex': serializer.toJson<String>(colorHex),
+      'iconKey': serializer.toJson<String>(iconKey),
       'userId': serializer.toJson<String>(userId),
       'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -250,6 +280,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? id,
     String? name,
     String? colorHex,
+    String? iconKey,
     String? userId,
     bool? isActive,
     bool? isSynced,
@@ -257,6 +288,7 @@ class Category extends DataClass implements Insertable<Category> {
     id: id ?? this.id,
     name: name ?? this.name,
     colorHex: colorHex ?? this.colorHex,
+    iconKey: iconKey ?? this.iconKey,
     userId: userId ?? this.userId,
     isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
@@ -266,6 +298,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
       userId: data.userId.present ? data.userId.value : this.userId,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -278,6 +311,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorHex: $colorHex, ')
+          ..write('iconKey: $iconKey, ')
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced')
@@ -287,7 +321,7 @@ class Category extends DataClass implements Insertable<Category> {
 
   @override
   int get hashCode =>
-      Object.hash(id, name, colorHex, userId, isActive, isSynced);
+      Object.hash(id, name, colorHex, iconKey, userId, isActive, isSynced);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -295,6 +329,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.id == this.id &&
           other.name == this.name &&
           other.colorHex == this.colorHex &&
+          other.iconKey == this.iconKey &&
           other.userId == this.userId &&
           other.isActive == this.isActive &&
           other.isSynced == this.isSynced);
@@ -304,6 +339,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> colorHex;
+  final Value<String> iconKey;
   final Value<String> userId;
   final Value<bool> isActive;
   final Value<bool> isSynced;
@@ -312,6 +348,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.colorHex = const Value.absent(),
+    this.iconKey = const Value.absent(),
     this.userId = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -321,6 +358,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String id,
     required String name,
     required String colorHex,
+    required String iconKey,
     required String userId,
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -328,11 +366,13 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   }) : id = Value(id),
        name = Value(name),
        colorHex = Value(colorHex),
+       iconKey = Value(iconKey),
        userId = Value(userId);
   static Insertable<Category> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? colorHex,
+    Expression<String>? iconKey,
     Expression<String>? userId,
     Expression<bool>? isActive,
     Expression<bool>? isSynced,
@@ -342,6 +382,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (colorHex != null) 'color_hex': colorHex,
+      if (iconKey != null) 'icon_key': iconKey,
       if (userId != null) 'user_id': userId,
       if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
@@ -353,6 +394,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? id,
     Value<String>? name,
     Value<String>? colorHex,
+    Value<String>? iconKey,
     Value<String>? userId,
     Value<bool>? isActive,
     Value<bool>? isSynced,
@@ -362,6 +404,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       id: id ?? this.id,
       name: name ?? this.name,
       colorHex: colorHex ?? this.colorHex,
+      iconKey: iconKey ?? this.iconKey,
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
@@ -380,6 +423,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     }
     if (colorHex.present) {
       map['color_hex'] = Variable<String>(colorHex.value);
+    }
+    if (iconKey.present) {
+      map['icon_key'] = Variable<String>(iconKey.value);
     }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
@@ -402,6 +448,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorHex: $colorHex, ')
+          ..write('iconKey: $iconKey, ')
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
@@ -1457,6 +1504,9 @@ class $FixedExpensesTable extends FixedExpenses
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES fixed_expense_templates (id)',
+    ),
   );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
@@ -3146,6 +3196,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       required String id,
       required String name,
       required String colorHex,
+      required String iconKey,
       required String userId,
       Value<bool> isActive,
       Value<bool> isSynced,
@@ -3156,6 +3207,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String> colorHex,
+      Value<String> iconKey,
       Value<String> userId,
       Value<bool> isActive,
       Value<bool> isSynced,
@@ -3256,6 +3308,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get colorHex => $composableBuilder(
     column: $table.colorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3375,6 +3432,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get iconKey => $composableBuilder(
+    column: $table.iconKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnOrderings(column),
@@ -3408,6 +3470,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get colorHex =>
       $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<String> get iconKey =>
+      $composableBuilder(column: $table.iconKey, builder: (column) => column);
 
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
@@ -3530,6 +3595,7 @@ class $$CategoriesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> colorHex = const Value.absent(),
+                Value<String> iconKey = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -3538,6 +3604,7 @@ class $$CategoriesTableTableManager
                 id: id,
                 name: name,
                 colorHex: colorHex,
+                iconKey: iconKey,
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,
@@ -3548,6 +3615,7 @@ class $$CategoriesTableTableManager
                 required String id,
                 required String name,
                 required String colorHex,
+                required String iconKey,
                 required String userId,
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -3556,6 +3624,7 @@ class $$CategoriesTableTableManager
                 id: id,
                 name: name,
                 colorHex: colorHex,
+                iconKey: iconKey,
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,
@@ -4090,6 +4159,27 @@ final class $$FixedExpenseTemplatesTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$FixedExpensesTable, List<FixedExpense>>
+  _fixedExpensesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.fixedExpenses,
+    aliasName: $_aliasNameGenerator(
+      db.fixedExpenseTemplates.id,
+      db.fixedExpenses.templateId,
+    ),
+  );
+
+  $$FixedExpensesTableProcessedTableManager get fixedExpensesRefs {
+    final manager = $$FixedExpensesTableTableManager(
+      $_db,
+      $_db.fixedExpenses,
+    ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_fixedExpensesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$FixedExpenseTemplatesTableFilterComposer
@@ -4157,6 +4247,31 @@ class $$FixedExpenseTemplatesTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> fixedExpensesRefs(
+    Expression<bool> Function($$FixedExpensesTableFilterComposer f) f,
+  ) {
+    final $$FixedExpensesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fixedExpenses,
+      getReferencedColumn: (t) => t.templateId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixedExpensesTableFilterComposer(
+            $db: $db,
+            $table: $db.fixedExpenses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -4282,6 +4397,31 @@ class $$FixedExpenseTemplatesTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> fixedExpensesRefs<T extends Object>(
+    Expression<T> Function($$FixedExpensesTableAnnotationComposer a) f,
+  ) {
+    final $$FixedExpensesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.fixedExpenses,
+      getReferencedColumn: (t) => t.templateId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixedExpensesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fixedExpenses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FixedExpenseTemplatesTableTableManager
@@ -4297,7 +4437,7 @@ class $$FixedExpenseTemplatesTableTableManager
           $$FixedExpenseTemplatesTableUpdateCompanionBuilder,
           (FixedExpenseTemplate, $$FixedExpenseTemplatesTableReferences),
           FixedExpenseTemplate,
-          PrefetchHooks Function({bool categoryId})
+          PrefetchHooks Function({bool categoryId, bool fixedExpensesRefs})
         > {
   $$FixedExpenseTemplatesTableTableManager(
     _$AppDatabase db,
@@ -4373,49 +4513,75 @@ class $$FixedExpenseTemplatesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({categoryId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (categoryId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.categoryId,
-                                referencedTable:
-                                    $$FixedExpenseTemplatesTableReferences
-                                        ._categoryIdTable(db),
-                                referencedColumn:
-                                    $$FixedExpenseTemplatesTableReferences
-                                        ._categoryIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({categoryId = false, fixedExpensesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (fixedExpensesRefs) db.fixedExpenses,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$FixedExpenseTemplatesTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$FixedExpenseTemplatesTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (fixedExpensesRefs)
+                        await $_getPrefetchedData<
+                          FixedExpenseTemplate,
+                          $FixedExpenseTemplatesTable,
+                          FixedExpense
+                        >(
+                          currentTable: table,
+                          referencedTable:
+                              $$FixedExpenseTemplatesTableReferences
+                                  ._fixedExpensesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FixedExpenseTemplatesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).fixedExpensesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.templateId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4432,7 +4598,7 @@ typedef $$FixedExpenseTemplatesTableProcessedTableManager =
       $$FixedExpenseTemplatesTableUpdateCompanionBuilder,
       (FixedExpenseTemplate, $$FixedExpenseTemplatesTableReferences),
       FixedExpenseTemplate,
-      PrefetchHooks Function({bool categoryId})
+      PrefetchHooks Function({bool categoryId, bool fixedExpensesRefs})
     >;
 typedef $$FixedExpensesTableCreateCompanionBuilder =
     FixedExpensesCompanion Function({
@@ -4487,6 +4653,28 @@ final class $$FixedExpensesTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static $FixedExpenseTemplatesTable _templateIdTable(_$AppDatabase db) =>
+      db.fixedExpenseTemplates.createAlias(
+        $_aliasNameGenerator(
+          db.fixedExpenses.templateId,
+          db.fixedExpenseTemplates.id,
+        ),
+      );
+
+  $$FixedExpenseTemplatesTableProcessedTableManager get templateId {
+    final $_column = $_itemColumn<String>('template_id')!;
+
+    final manager = $$FixedExpenseTemplatesTableTableManager(
+      $_db,
+      $_db.fixedExpenseTemplates,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 }
 
 class $$FixedExpensesTableFilterComposer
@@ -4523,11 +4711,6 @@ class $$FixedExpensesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnFilters(column),
@@ -4558,6 +4741,30 @@ class $$FixedExpensesTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return composer;
+  }
+
+  $$FixedExpenseTemplatesTableFilterComposer get templateId {
+    final $$FixedExpenseTemplatesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.fixedExpenseTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FixedExpenseTemplatesTableFilterComposer(
+                $db: $db,
+                $table: $db.fixedExpenseTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 }
@@ -4596,11 +4803,6 @@ class $$FixedExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get isActive => $composableBuilder(
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
@@ -4633,6 +4835,30 @@ class $$FixedExpensesTableOrderingComposer
     );
     return composer;
   }
+
+  $$FixedExpenseTemplatesTableOrderingComposer get templateId {
+    final $$FixedExpenseTemplatesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.fixedExpenseTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FixedExpenseTemplatesTableOrderingComposer(
+                $db: $db,
+                $table: $db.fixedExpenseTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$FixedExpensesTableAnnotationComposer
@@ -4658,11 +4884,6 @@ class $$FixedExpensesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
-
-  GeneratedColumn<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
@@ -4692,6 +4913,30 @@ class $$FixedExpensesTableAnnotationComposer
     );
     return composer;
   }
+
+  $$FixedExpenseTemplatesTableAnnotationComposer get templateId {
+    final $$FixedExpenseTemplatesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.templateId,
+          referencedTable: $db.fixedExpenseTemplates,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$FixedExpenseTemplatesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.fixedExpenseTemplates,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$FixedExpensesTableTableManager
@@ -4707,7 +4952,7 @@ class $$FixedExpensesTableTableManager
           $$FixedExpensesTableUpdateCompanionBuilder,
           (FixedExpense, $$FixedExpensesTableReferences),
           FixedExpense,
-          PrefetchHooks Function({bool categoryId})
+          PrefetchHooks Function({bool categoryId, bool templateId})
         > {
   $$FixedExpensesTableTableManager(_$AppDatabase db, $FixedExpensesTable table)
     : super(
@@ -4776,7 +5021,7 @@ class $$FixedExpensesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({categoryId = false}) {
+          prefetchHooksCallback: ({categoryId = false, templateId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -4809,6 +5054,19 @@ class $$FixedExpensesTableTableManager
                               )
                               as T;
                     }
+                    if (templateId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.templateId,
+                                referencedTable: $$FixedExpensesTableReferences
+                                    ._templateIdTable(db),
+                                referencedColumn: $$FixedExpensesTableReferences
+                                    ._templateIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
                     return state;
                   },
@@ -4833,7 +5091,7 @@ typedef $$FixedExpensesTableProcessedTableManager =
       $$FixedExpensesTableUpdateCompanionBuilder,
       (FixedExpense, $$FixedExpensesTableReferences),
       FixedExpense,
-      PrefetchHooks Function({bool categoryId})
+      PrefetchHooks Function({bool categoryId, bool templateId})
     >;
 typedef $$IncomesTableCreateCompanionBuilder =
     IncomesCompanion Function({

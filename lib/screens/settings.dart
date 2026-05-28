@@ -59,10 +59,9 @@ class _SettingsState extends State<Settings> {
                     children: [
                       Panel(
                         elementItemBuilder: (context, index) {
-                          final categoryKey = AppConstants.categories.keys
-                              .elementAt(index);
-                          final categoryValue = AppConstants.categories.values
-                              .elementAt(index);
+                          final categories = AppDatabase.instance.categoryList;
+                          final currentCategory = categories.elementAt(index);
+
                           return Container(
                             color: colorScheme.surface,
                             child: ListTile(
@@ -70,13 +69,13 @@ class _SettingsState extends State<Settings> {
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  color: categoryValue["color"] as Color,
+                                  color: AppConstants.getColorFromHex(currentCategory.colorHex),
                                   shape: BoxShape.circle,
                                 ),
-                                child: categoryValue["icon"] as Icon,
+                                child: AppConstants.getIcon(currentCategory.iconKey),
                               ),
 
-                              title: Text(categoryKey),
+                              title: Text(currentCategory.name),
 
                               trailing: Row(
                                 // NOTE: Row is greedy and will likely take up the entire horizontal space
@@ -97,7 +96,7 @@ class _SettingsState extends State<Settings> {
                             ),
                           );
                         },
-                        elementCount: AppConstants.categories.length,
+                        elementCount: AppDatabase.instance.categoryList.length,
                         button: ElevatedButton.icon(
                           onPressed: () {},
                           label: Text("Add Category"),

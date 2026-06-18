@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 class Panel extends StatelessWidget {
   final Widget Function(BuildContext, int) elementItemBuilder;
   final int elementCount;
-  // ZZZ TODO: Needs to be null
-  final ElevatedButton button;
+  final ElevatedButton? button;
   final String titleLabel;
   // final Function onButtonPressed;
   // final String buttonLabel;
@@ -36,7 +35,7 @@ class Panel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 Text(titleLabel, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
-                button,
+                button ?? ElevatedButton(onPressed: () {}, child: Text("If you see this, something is wrong for 'button' inside Panel")),
               ],
             )
           ),

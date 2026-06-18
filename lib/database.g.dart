@@ -16,7 +16,8 @@ class $CategoriesTable extends Categories
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -88,6 +89,21 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -97,6 +113,7 @@ class $CategoriesTable extends Categories
     userId,
     isActive,
     isSynced,
+    isDeleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -112,8 +129,6 @@ class $CategoriesTable extends Categories
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -159,6 +174,12 @@ class $CategoriesTable extends Categories
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
       );
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
     return context;
   }
 
@@ -196,6 +217,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
       )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
     );
   }
 
@@ -213,6 +238,7 @@ class Category extends DataClass implements Insertable<Category> {
   final String userId;
   final bool isActive;
   final bool isSynced;
+  final bool isDeleted;
   const Category({
     required this.id,
     required this.name,
@@ -221,6 +247,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.userId,
     required this.isActive,
     required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -232,6 +259,7 @@ class Category extends DataClass implements Insertable<Category> {
     map['user_id'] = Variable<String>(userId);
     map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -244,6 +272,7 @@ class Category extends DataClass implements Insertable<Category> {
       userId: Value(userId),
       isActive: Value(isActive),
       isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -260,6 +289,7 @@ class Category extends DataClass implements Insertable<Category> {
       userId: serializer.fromJson<String>(json['userId']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -273,6 +303,7 @@ class Category extends DataClass implements Insertable<Category> {
       'userId': serializer.toJson<String>(userId),
       'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -284,6 +315,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? userId,
     bool? isActive,
     bool? isSynced,
+    bool? isDeleted,
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -292,6 +324,7 @@ class Category extends DataClass implements Insertable<Category> {
     userId: userId ?? this.userId,
     isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -302,6 +335,7 @@ class Category extends DataClass implements Insertable<Category> {
       userId: data.userId.present ? data.userId.value : this.userId,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -314,14 +348,23 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('iconKey: $iconKey, ')
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
-          ..write('isSynced: $isSynced')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, colorHex, iconKey, userId, isActive, isSynced);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    colorHex,
+    iconKey,
+    userId,
+    isActive,
+    isSynced,
+    isDeleted,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -332,7 +375,8 @@ class Category extends DataClass implements Insertable<Category> {
           other.iconKey == this.iconKey &&
           other.userId == this.userId &&
           other.isActive == this.isActive &&
-          other.isSynced == this.isSynced);
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -343,6 +387,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> userId;
   final Value<bool> isActive;
   final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
@@ -352,19 +397,20 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.userId = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String name,
     required String colorHex,
     required String iconKey,
     required String userId,
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        colorHex = Value(colorHex),
        iconKey = Value(iconKey),
        userId = Value(userId);
@@ -376,6 +422,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? userId,
     Expression<bool>? isActive,
     Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -386,6 +433,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (userId != null) 'user_id': userId,
       if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -398,6 +446,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? userId,
     Value<bool>? isActive,
     Value<bool>? isSynced,
+    Value<bool>? isDeleted,
     Value<int>? rowid,
   }) {
     return CategoriesCompanion(
@@ -408,6 +457,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -436,6 +486,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
     }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -452,17 +505,19 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
 }
 
-class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
+class $TemplatesTable extends Templates
+    with TableInfo<$TemplatesTable, Template> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $ExpensesTable(this.attachedDatabase, [this._alias]);
+  $TemplatesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -470,7 +525,8 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -490,483 +546,17 @@ class $ExpensesTable extends Expenses with TableInfo<$ExpensesTable, Expense> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
   @override
-  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
-    'date',
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
     aliasedName,
     false,
     type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
-    'categoryId',
-  );
-  @override
-  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
-    'category_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES categories (id)',
-    ),
-  );
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
-  @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-    'user_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
-    'isSynced',
-  );
-  @override
-  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
-    'is_synced',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_synced" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    amount,
-    date,
-    categoryId,
-    userId,
-    isSynced,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'expenses';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Expense> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_nameMeta);
-    }
-    if (data.containsKey('amount')) {
-      context.handle(
-        _amountMeta,
-        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_amountMeta);
-    }
-    if (data.containsKey('date')) {
-      context.handle(
-        _dateMeta,
-        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_dateMeta);
-    }
-    if (data.containsKey('category_id')) {
-      context.handle(
-        _categoryIdMeta,
-        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_categoryIdMeta);
-    }
-    if (data.containsKey('user_id')) {
-      context.handle(
-        _userIdMeta,
-        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_userIdMeta);
-    }
-    if (data.containsKey('is_synced')) {
-      context.handle(
-        _isSyncedMeta,
-        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Expense map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Expense(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
-      amount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}amount'],
-      )!,
-      date: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}date'],
-      )!,
-      categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}category_id'],
-      )!,
-      userId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}user_id'],
-      )!,
-      isSynced: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_synced'],
-      )!,
-    );
-  }
-
-  @override
-  $ExpensesTable createAlias(String alias) {
-    return $ExpensesTable(attachedDatabase, alias);
-  }
-}
-
-class Expense extends DataClass implements Insertable<Expense> {
-  final String id;
-  final String name;
-  final double amount;
-  final DateTime date;
-  final String categoryId;
-  final String userId;
-  final bool isSynced;
-  const Expense({
-    required this.id,
-    required this.name,
-    required this.amount,
-    required this.date,
-    required this.categoryId,
-    required this.userId,
-    required this.isSynced,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['name'] = Variable<String>(name);
-    map['amount'] = Variable<double>(amount);
-    map['date'] = Variable<DateTime>(date);
-    map['category_id'] = Variable<String>(categoryId);
-    map['user_id'] = Variable<String>(userId);
-    map['is_synced'] = Variable<bool>(isSynced);
-    return map;
-  }
-
-  ExpensesCompanion toCompanion(bool nullToAbsent) {
-    return ExpensesCompanion(
-      id: Value(id),
-      name: Value(name),
-      amount: Value(amount),
-      date: Value(date),
-      categoryId: Value(categoryId),
-      userId: Value(userId),
-      isSynced: Value(isSynced),
-    );
-  }
-
-  factory Expense.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Expense(
-      id: serializer.fromJson<String>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
-      amount: serializer.fromJson<double>(json['amount']),
-      date: serializer.fromJson<DateTime>(json['date']),
-      categoryId: serializer.fromJson<String>(json['categoryId']),
-      userId: serializer.fromJson<String>(json['userId']),
-      isSynced: serializer.fromJson<bool>(json['isSynced']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'name': serializer.toJson<String>(name),
-      'amount': serializer.toJson<double>(amount),
-      'date': serializer.toJson<DateTime>(date),
-      'categoryId': serializer.toJson<String>(categoryId),
-      'userId': serializer.toJson<String>(userId),
-      'isSynced': serializer.toJson<bool>(isSynced),
-    };
-  }
-
-  Expense copyWith({
-    String? id,
-    String? name,
-    double? amount,
-    DateTime? date,
-    String? categoryId,
-    String? userId,
-    bool? isSynced,
-  }) => Expense(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    amount: amount ?? this.amount,
-    date: date ?? this.date,
-    categoryId: categoryId ?? this.categoryId,
-    userId: userId ?? this.userId,
-    isSynced: isSynced ?? this.isSynced,
-  );
-  Expense copyWithCompanion(ExpensesCompanion data) {
-    return Expense(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      amount: data.amount.present ? data.amount.value : this.amount,
-      date: data.date.present ? data.date.value : this.date,
-      categoryId: data.categoryId.present
-          ? data.categoryId.value
-          : this.categoryId,
-      userId: data.userId.present ? data.userId.value : this.userId,
-      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Expense(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('amount: $amount, ')
-          ..write('date: $date, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode =>
-      Object.hash(id, name, amount, date, categoryId, userId, isSynced);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Expense &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.amount == this.amount &&
-          other.date == this.date &&
-          other.categoryId == this.categoryId &&
-          other.userId == this.userId &&
-          other.isSynced == this.isSynced);
-}
-
-class ExpensesCompanion extends UpdateCompanion<Expense> {
-  final Value<String> id;
-  final Value<String> name;
-  final Value<double> amount;
-  final Value<DateTime> date;
-  final Value<String> categoryId;
-  final Value<String> userId;
-  final Value<bool> isSynced;
-  final Value<int> rowid;
-  const ExpensesCompanion({
-    this.id = const Value.absent(),
-    this.name = const Value.absent(),
-    this.amount = const Value.absent(),
-    this.date = const Value.absent(),
-    this.categoryId = const Value.absent(),
-    this.userId = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  ExpensesCompanion.insert({
-    required String id,
-    required String name,
-    required double amount,
-    required DateTime date,
-    required String categoryId,
-    required String userId,
-    this.isSynced = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
-       amount = Value(amount),
-       date = Value(date),
-       categoryId = Value(categoryId),
-       userId = Value(userId);
-  static Insertable<Expense> custom({
-    Expression<String>? id,
-    Expression<String>? name,
-    Expression<double>? amount,
-    Expression<DateTime>? date,
-    Expression<String>? categoryId,
-    Expression<String>? userId,
-    Expression<bool>? isSynced,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (amount != null) 'amount': amount,
-      if (date != null) 'date': date,
-      if (categoryId != null) 'category_id': categoryId,
-      if (userId != null) 'user_id': userId,
-      if (isSynced != null) 'is_synced': isSynced,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  ExpensesCompanion copyWith({
-    Value<String>? id,
-    Value<String>? name,
-    Value<double>? amount,
-    Value<DateTime>? date,
-    Value<String>? categoryId,
-    Value<String>? userId,
-    Value<bool>? isSynced,
-    Value<int>? rowid,
-  }) {
-    return ExpensesCompanion(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      amount: amount ?? this.amount,
-      date: date ?? this.date,
-      categoryId: categoryId ?? this.categoryId,
-      userId: userId ?? this.userId,
-      isSynced: isSynced ?? this.isSynced,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
-    }
-    if (date.present) {
-      map['date'] = Variable<DateTime>(date.value);
-    }
-    if (categoryId.present) {
-      map['category_id'] = Variable<String>(categoryId.value);
-    }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
-    }
-    if (isSynced.present) {
-      map['is_synced'] = Variable<bool>(isSynced.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ExpensesCompanion(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('amount: $amount, ')
-          ..write('date: $date, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
-    with TableInfo<$FixedExpenseTemplatesTable, FixedExpenseTemplate> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $FixedExpenseTemplatesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
-  @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-    'amount',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
-    'categoryId',
-  );
-  @override
-  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
-    'category_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES categories (id)',
-    ),
-  );
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
-  @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-    'user_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    clientDefault: () => DateTime.now(),
   );
   static const VerificationMeta _billingDayMeta = const VerificationMeta(
     'billingDay',
@@ -979,6 +569,38 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<TransactionType, int> type =
+      GeneratedColumn<int>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<TransactionType>($TemplatesTable.$convertertype);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
   );
@@ -1009,33 +631,49 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
     amount,
-    categoryId,
-    userId,
+    startDate,
     billingDay,
+    type,
+    userId,
+    categoryId,
     isActive,
     isSynced,
+    isDeleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'fixed_expense_templates';
+  static const String $name = 'templates';
   @override
   VerificationContext validateIntegrity(
-    Insertable<FixedExpenseTemplate> instance, {
+    Insertable<Template> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -1053,13 +691,19 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
     } else if (isInserting) {
       context.missing(_amountMeta);
     }
-    if (data.containsKey('category_id')) {
+    if (data.containsKey('start_date')) {
       context.handle(
-        _categoryIdMeta,
-        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
+    if (data.containsKey('billing_day')) {
+      context.handle(
+        _billingDayMeta,
+        billingDay.isAcceptableOrUnknown(data['billing_day']!, _billingDayMeta),
       );
     } else if (isInserting) {
-      context.missing(_categoryIdMeta);
+      context.missing(_billingDayMeta);
     }
     if (data.containsKey('user_id')) {
       context.handle(
@@ -1069,13 +713,13 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
-    if (data.containsKey('billing_day')) {
+    if (data.containsKey('category_id')) {
       context.handle(
-        _billingDayMeta,
-        billingDay.isAcceptableOrUnknown(data['billing_day']!, _billingDayMeta),
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_billingDayMeta);
+      context.missing(_categoryIdMeta);
     }
     if (data.containsKey('is_active')) {
       context.handle(
@@ -1089,15 +733,21 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
       );
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
     return context;
   }
 
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  FixedExpenseTemplate map(Map<String, dynamic> data, {String? tablePrefix}) {
+  Template map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return FixedExpenseTemplate(
+    return Template(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1110,17 +760,27 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
         DriftSqlType.double,
         data['${effectivePrefix}amount'],
       )!,
-      categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}category_id'],
-      )!,
-      userId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}user_id'],
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
       )!,
       billingDay: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}billing_day'],
+      )!,
+      type: $TemplatesTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
       )!,
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -1130,34 +790,46 @@ class $FixedExpenseTemplatesTable extends FixedExpenseTemplates
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
       )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
     );
   }
 
   @override
-  $FixedExpenseTemplatesTable createAlias(String alias) {
-    return $FixedExpenseTemplatesTable(attachedDatabase, alias);
+  $TemplatesTable createAlias(String alias) {
+    return $TemplatesTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<TransactionType, int, int> $convertertype =
+      const EnumIndexConverter<TransactionType>(TransactionType.values);
 }
 
-class FixedExpenseTemplate extends DataClass
-    implements Insertable<FixedExpenseTemplate> {
+class Template extends DataClass implements Insertable<Template> {
   final String id;
   final String name;
   final double amount;
-  final String categoryId;
-  final String userId;
+  final DateTime startDate;
   final int billingDay;
+  final TransactionType type;
+  final String userId;
+  final String categoryId;
   final bool isActive;
   final bool isSynced;
-  const FixedExpenseTemplate({
+  final bool isDeleted;
+  const Template({
     required this.id,
     required this.name,
     required this.amount,
-    required this.categoryId,
-    required this.userId,
+    required this.startDate,
     required this.billingDay,
+    required this.type,
+    required this.userId,
+    required this.categoryId,
     required this.isActive,
     required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1165,41 +837,54 @@ class FixedExpenseTemplate extends DataClass
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['amount'] = Variable<double>(amount);
-    map['category_id'] = Variable<String>(categoryId);
-    map['user_id'] = Variable<String>(userId);
+    map['start_date'] = Variable<DateTime>(startDate);
     map['billing_day'] = Variable<int>(billingDay);
+    {
+      map['type'] = Variable<int>($TemplatesTable.$convertertype.toSql(type));
+    }
+    map['user_id'] = Variable<String>(userId);
+    map['category_id'] = Variable<String>(categoryId);
     map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
-  FixedExpenseTemplatesCompanion toCompanion(bool nullToAbsent) {
-    return FixedExpenseTemplatesCompanion(
+  TemplatesCompanion toCompanion(bool nullToAbsent) {
+    return TemplatesCompanion(
       id: Value(id),
       name: Value(name),
       amount: Value(amount),
-      categoryId: Value(categoryId),
-      userId: Value(userId),
+      startDate: Value(startDate),
       billingDay: Value(billingDay),
+      type: Value(type),
+      userId: Value(userId),
+      categoryId: Value(categoryId),
       isActive: Value(isActive),
       isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
-  factory FixedExpenseTemplate.fromJson(
+  factory Template.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return FixedExpenseTemplate(
+    return Template(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       amount: serializer.fromJson<double>(json['amount']),
-      categoryId: serializer.fromJson<String>(json['categoryId']),
-      userId: serializer.fromJson<String>(json['userId']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
       billingDay: serializer.fromJson<int>(json['billingDay']),
+      type: $TemplatesTable.$convertertype.fromJson(
+        serializer.fromJson<int>(json['type']),
+      ),
+      userId: serializer.fromJson<String>(json['userId']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -1209,61 +894,78 @@ class FixedExpenseTemplate extends DataClass
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'amount': serializer.toJson<double>(amount),
-      'categoryId': serializer.toJson<String>(categoryId),
-      'userId': serializer.toJson<String>(userId),
+      'startDate': serializer.toJson<DateTime>(startDate),
       'billingDay': serializer.toJson<int>(billingDay),
+      'type': serializer.toJson<int>(
+        $TemplatesTable.$convertertype.toJson(type),
+      ),
+      'userId': serializer.toJson<String>(userId),
+      'categoryId': serializer.toJson<String>(categoryId),
       'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
-  FixedExpenseTemplate copyWith({
+  Template copyWith({
     String? id,
     String? name,
     double? amount,
-    String? categoryId,
-    String? userId,
+    DateTime? startDate,
     int? billingDay,
+    TransactionType? type,
+    String? userId,
+    String? categoryId,
     bool? isActive,
     bool? isSynced,
-  }) => FixedExpenseTemplate(
+    bool? isDeleted,
+  }) => Template(
     id: id ?? this.id,
     name: name ?? this.name,
     amount: amount ?? this.amount,
-    categoryId: categoryId ?? this.categoryId,
-    userId: userId ?? this.userId,
+    startDate: startDate ?? this.startDate,
     billingDay: billingDay ?? this.billingDay,
+    type: type ?? this.type,
+    userId: userId ?? this.userId,
+    categoryId: categoryId ?? this.categoryId,
     isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
-  FixedExpenseTemplate copyWithCompanion(FixedExpenseTemplatesCompanion data) {
-    return FixedExpenseTemplate(
+  Template copyWithCompanion(TemplatesCompanion data) {
+    return Template(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       amount: data.amount.present ? data.amount.value : this.amount,
-      categoryId: data.categoryId.present
-          ? data.categoryId.value
-          : this.categoryId,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
       billingDay: data.billingDay.present
           ? data.billingDay.value
           : this.billingDay,
+      type: data.type.present ? data.type.value : this.type,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('FixedExpenseTemplate(')
+    return (StringBuffer('Template(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('amount: $amount, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('userId: $userId, ')
+          ..write('startDate: $startDate, ')
           ..write('billingDay: $billingDay, ')
+          ..write('type: $type, ')
+          ..write('userId: $userId, ')
+          ..write('categoryId: $categoryId, ')
           ..write('isActive: $isActive, ')
-          ..write('isSynced: $isSynced')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
@@ -1273,108 +975,134 @@ class FixedExpenseTemplate extends DataClass
     id,
     name,
     amount,
-    categoryId,
-    userId,
+    startDate,
     billingDay,
+    type,
+    userId,
+    categoryId,
     isActive,
     isSynced,
+    isDeleted,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FixedExpenseTemplate &&
+      (other is Template &&
           other.id == this.id &&
           other.name == this.name &&
           other.amount == this.amount &&
-          other.categoryId == this.categoryId &&
-          other.userId == this.userId &&
+          other.startDate == this.startDate &&
           other.billingDay == this.billingDay &&
+          other.type == this.type &&
+          other.userId == this.userId &&
+          other.categoryId == this.categoryId &&
           other.isActive == this.isActive &&
-          other.isSynced == this.isSynced);
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
-class FixedExpenseTemplatesCompanion
-    extends UpdateCompanion<FixedExpenseTemplate> {
+class TemplatesCompanion extends UpdateCompanion<Template> {
   final Value<String> id;
   final Value<String> name;
   final Value<double> amount;
-  final Value<String> categoryId;
-  final Value<String> userId;
+  final Value<DateTime> startDate;
   final Value<int> billingDay;
+  final Value<TransactionType> type;
+  final Value<String> userId;
+  final Value<String> categoryId;
   final Value<bool> isActive;
   final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
-  const FixedExpenseTemplatesCompanion({
+  const TemplatesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.amount = const Value.absent(),
-    this.categoryId = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.startDate = const Value.absent(),
     this.billingDay = const Value.absent(),
+    this.type = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.categoryId = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  FixedExpenseTemplatesCompanion.insert({
-    required String id,
+  TemplatesCompanion.insert({
+    this.id = const Value.absent(),
     required String name,
     required double amount,
-    required String categoryId,
-    required String userId,
+    this.startDate = const Value.absent(),
     required int billingDay,
+    required TransactionType type,
+    required String userId,
+    required String categoryId,
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        amount = Value(amount),
-       categoryId = Value(categoryId),
+       billingDay = Value(billingDay),
+       type = Value(type),
        userId = Value(userId),
-       billingDay = Value(billingDay);
-  static Insertable<FixedExpenseTemplate> custom({
+       categoryId = Value(categoryId);
+  static Insertable<Template> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<double>? amount,
-    Expression<String>? categoryId,
-    Expression<String>? userId,
+    Expression<DateTime>? startDate,
     Expression<int>? billingDay,
+    Expression<int>? type,
+    Expression<String>? userId,
+    Expression<String>? categoryId,
     Expression<bool>? isActive,
     Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (amount != null) 'amount': amount,
-      if (categoryId != null) 'category_id': categoryId,
-      if (userId != null) 'user_id': userId,
+      if (startDate != null) 'start_date': startDate,
       if (billingDay != null) 'billing_day': billingDay,
+      if (type != null) 'type': type,
+      if (userId != null) 'user_id': userId,
+      if (categoryId != null) 'category_id': categoryId,
       if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  FixedExpenseTemplatesCompanion copyWith({
+  TemplatesCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
     Value<double>? amount,
-    Value<String>? categoryId,
-    Value<String>? userId,
+    Value<DateTime>? startDate,
     Value<int>? billingDay,
+    Value<TransactionType>? type,
+    Value<String>? userId,
+    Value<String>? categoryId,
     Value<bool>? isActive,
     Value<bool>? isSynced,
+    Value<bool>? isDeleted,
     Value<int>? rowid,
   }) {
-    return FixedExpenseTemplatesCompanion(
+    return TemplatesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
-      categoryId: categoryId ?? this.categoryId,
-      userId: userId ?? this.userId,
+      startDate: startDate ?? this.startDate,
       billingDay: billingDay ?? this.billingDay,
+      type: type ?? this.type,
+      userId: userId ?? this.userId,
+      categoryId: categoryId ?? this.categoryId,
       isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1391,20 +1119,31 @@ class FixedExpenseTemplatesCompanion
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
     }
-    if (categoryId.present) {
-      map['category_id'] = Variable<String>(categoryId.value);
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (billingDay.present) {
+      map['billing_day'] = Variable<int>(billingDay.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(
+        $TemplatesTable.$convertertype.toSql(type.value),
+      );
     }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
-    if (billingDay.present) {
-      map['billing_day'] = Variable<int>(billingDay.value);
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1414,27 +1153,30 @@ class FixedExpenseTemplatesCompanion
 
   @override
   String toString() {
-    return (StringBuffer('FixedExpenseTemplatesCompanion(')
+    return (StringBuffer('TemplatesCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('amount: $amount, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('userId: $userId, ')
+          ..write('startDate: $startDate, ')
           ..write('billingDay: $billingDay, ')
+          ..write('type: $type, ')
+          ..write('userId: $userId, ')
+          ..write('categoryId: $categoryId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
 }
 
-class $FixedExpensesTable extends FixedExpenses
-    with TableInfo<$FixedExpensesTable, FixedExpense> {
+class $TransactionsTable extends Transactions
+    with TableInfo<$TransactionsTable, Transaction> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $FixedExpensesTable(this.attachedDatabase, [this._alias]);
+  $TransactionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -1442,7 +1184,8 @@ class $FixedExpensesTable extends FixedExpenses
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -1462,6 +1205,24 @@ class $FixedExpensesTable extends FixedExpenses
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<TransactionType, int> type =
+      GeneratedColumn<int>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<TransactionType>($TransactionsTable.$convertertype);
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
@@ -1485,15 +1246,6 @@ class $FixedExpensesTable extends FixedExpenses
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _dateMeta = const VerificationMeta('date');
-  @override
-  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
-    'date',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _templateIdMeta = const VerificationMeta(
     'templateId',
   );
@@ -1501,27 +1253,12 @@ class $FixedExpensesTable extends FixedExpenses
   late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
     'template_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES fixed_expense_templates (id)',
-    ),
-  );
-  static const VerificationMeta _isActiveMeta = const VerificationMeta(
-    'isActive',
-  );
-  @override
-  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
-    'is_active',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_active" IN (0, 1))',
+      'REFERENCES templates (id)',
     ),
-    defaultValue: const Constant(true),
   );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
@@ -1538,34 +1275,48 @@ class $FixedExpensesTable extends FixedExpenses
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
     amount,
+    date,
+    type,
     categoryId,
     userId,
-    date,
     templateId,
-    isActive,
     isSynced,
+    isDeleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'fixed_expenses';
+  static const String $name = 'transactions';
   @override
   VerificationContext validateIntegrity(
-    Insertable<FixedExpense> instance, {
+    Insertable<Transaction> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -1582,6 +1333,14 @@ class $FixedExpensesTable extends FixedExpenses
       );
     } else if (isInserting) {
       context.missing(_amountMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -1599,26 +1358,10 @@ class $FixedExpensesTable extends FixedExpenses
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
-    if (data.containsKey('date')) {
-      context.handle(
-        _dateMeta,
-        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_dateMeta);
-    }
     if (data.containsKey('template_id')) {
       context.handle(
         _templateIdMeta,
         templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_templateIdMeta);
-    }
-    if (data.containsKey('is_active')) {
-      context.handle(
-        _isActiveMeta,
-        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
     if (data.containsKey('is_synced')) {
@@ -1627,15 +1370,21 @@ class $FixedExpensesTable extends FixedExpenses
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
       );
     }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
     return context;
   }
 
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  FixedExpense map(Map<String, dynamic> data, {String? tablePrefix}) {
+  Transaction map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return FixedExpense(
+    return Transaction(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1648,6 +1397,16 @@ class $FixedExpensesTable extends FixedExpenses
         DriftSqlType.double,
         data['${effectivePrefix}amount'],
       )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      type: $TransactionsTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}category_id'],
@@ -1656,51 +1415,52 @@ class $FixedExpensesTable extends FixedExpenses
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
       )!,
-      date: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}date'],
-      )!,
       templateId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}template_id'],
-      )!,
-      isActive: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_active'],
-      )!,
+      ),
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
       )!,
     );
   }
 
   @override
-  $FixedExpensesTable createAlias(String alias) {
-    return $FixedExpensesTable(attachedDatabase, alias);
+  $TransactionsTable createAlias(String alias) {
+    return $TransactionsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<TransactionType, int, int> $convertertype =
+      const EnumIndexConverter<TransactionType>(TransactionType.values);
 }
 
-class FixedExpense extends DataClass implements Insertable<FixedExpense> {
+class Transaction extends DataClass implements Insertable<Transaction> {
   final String id;
   final String name;
   final double amount;
+  final DateTime date;
+  final TransactionType type;
   final String categoryId;
   final String userId;
-  final DateTime date;
-  final String templateId;
-  final bool isActive;
+  final String? templateId;
   final bool isSynced;
-  const FixedExpense({
+  final bool isDeleted;
+  const Transaction({
     required this.id,
     required this.name,
     required this.amount,
+    required this.date,
+    required this.type,
     required this.categoryId,
     required this.userId,
-    required this.date,
-    required this.templateId,
-    required this.isActive,
+    this.templateId,
     required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1708,44 +1468,57 @@ class FixedExpense extends DataClass implements Insertable<FixedExpense> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['amount'] = Variable<double>(amount);
+    map['date'] = Variable<DateTime>(date);
+    {
+      map['type'] = Variable<int>(
+        $TransactionsTable.$convertertype.toSql(type),
+      );
+    }
     map['category_id'] = Variable<String>(categoryId);
     map['user_id'] = Variable<String>(userId);
-    map['date'] = Variable<DateTime>(date);
-    map['template_id'] = Variable<String>(templateId);
-    map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || templateId != null) {
+      map['template_id'] = Variable<String>(templateId);
+    }
     map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
-  FixedExpensesCompanion toCompanion(bool nullToAbsent) {
-    return FixedExpensesCompanion(
+  TransactionsCompanion toCompanion(bool nullToAbsent) {
+    return TransactionsCompanion(
       id: Value(id),
       name: Value(name),
       amount: Value(amount),
+      date: Value(date),
+      type: Value(type),
       categoryId: Value(categoryId),
       userId: Value(userId),
-      date: Value(date),
-      templateId: Value(templateId),
-      isActive: Value(isActive),
+      templateId: templateId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templateId),
       isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
-  factory FixedExpense.fromJson(
+  factory Transaction.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return FixedExpense(
+    return Transaction(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       amount: serializer.fromJson<double>(json['amount']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      type: $TransactionsTable.$convertertype.fromJson(
+        serializer.fromJson<int>(json['type']),
+      ),
       categoryId: serializer.fromJson<String>(json['categoryId']),
       userId: serializer.fromJson<String>(json['userId']),
-      date: serializer.fromJson<DateTime>(json['date']),
-      templateId: serializer.fromJson<String>(json['templateId']),
-      isActive: serializer.fromJson<bool>(json['isActive']),
+      templateId: serializer.fromJson<String?>(json['templateId']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -1755,66 +1528,73 @@ class FixedExpense extends DataClass implements Insertable<FixedExpense> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'amount': serializer.toJson<double>(amount),
+      'date': serializer.toJson<DateTime>(date),
+      'type': serializer.toJson<int>(
+        $TransactionsTable.$convertertype.toJson(type),
+      ),
       'categoryId': serializer.toJson<String>(categoryId),
       'userId': serializer.toJson<String>(userId),
-      'date': serializer.toJson<DateTime>(date),
-      'templateId': serializer.toJson<String>(templateId),
-      'isActive': serializer.toJson<bool>(isActive),
+      'templateId': serializer.toJson<String?>(templateId),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
-  FixedExpense copyWith({
+  Transaction copyWith({
     String? id,
     String? name,
     double? amount,
+    DateTime? date,
+    TransactionType? type,
     String? categoryId,
     String? userId,
-    DateTime? date,
-    String? templateId,
-    bool? isActive,
+    Value<String?> templateId = const Value.absent(),
     bool? isSynced,
-  }) => FixedExpense(
+    bool? isDeleted,
+  }) => Transaction(
     id: id ?? this.id,
     name: name ?? this.name,
     amount: amount ?? this.amount,
+    date: date ?? this.date,
+    type: type ?? this.type,
     categoryId: categoryId ?? this.categoryId,
     userId: userId ?? this.userId,
-    date: date ?? this.date,
-    templateId: templateId ?? this.templateId,
-    isActive: isActive ?? this.isActive,
+    templateId: templateId.present ? templateId.value : this.templateId,
     isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
-  FixedExpense copyWithCompanion(FixedExpensesCompanion data) {
-    return FixedExpense(
+  Transaction copyWithCompanion(TransactionsCompanion data) {
+    return Transaction(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       amount: data.amount.present ? data.amount.value : this.amount,
+      date: data.date.present ? data.date.value : this.date,
+      type: data.type.present ? data.type.value : this.type,
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
       userId: data.userId.present ? data.userId.value : this.userId,
-      date: data.date.present ? data.date.value : this.date,
       templateId: data.templateId.present
           ? data.templateId.value
           : this.templateId,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('FixedExpense(')
+    return (StringBuffer('Transaction(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('amount: $amount, ')
+          ..write('date: $date, ')
+          ..write('type: $type, ')
           ..write('categoryId: $categoryId, ')
           ..write('userId: $userId, ')
-          ..write('date: $date, ')
           ..write('templateId: $templateId, ')
-          ..write('isActive: $isActive, ')
-          ..write('isSynced: $isSynced')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
@@ -1824,117 +1604,125 @@ class FixedExpense extends DataClass implements Insertable<FixedExpense> {
     id,
     name,
     amount,
+    date,
+    type,
     categoryId,
     userId,
-    date,
     templateId,
-    isActive,
     isSynced,
+    isDeleted,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FixedExpense &&
+      (other is Transaction &&
           other.id == this.id &&
           other.name == this.name &&
           other.amount == this.amount &&
+          other.date == this.date &&
+          other.type == this.type &&
           other.categoryId == this.categoryId &&
           other.userId == this.userId &&
-          other.date == this.date &&
           other.templateId == this.templateId &&
-          other.isActive == this.isActive &&
-          other.isSynced == this.isSynced);
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
-class FixedExpensesCompanion extends UpdateCompanion<FixedExpense> {
+class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> id;
   final Value<String> name;
   final Value<double> amount;
+  final Value<DateTime> date;
+  final Value<TransactionType> type;
   final Value<String> categoryId;
   final Value<String> userId;
-  final Value<DateTime> date;
-  final Value<String> templateId;
-  final Value<bool> isActive;
+  final Value<String?> templateId;
   final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
-  const FixedExpensesCompanion({
+  const TransactionsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.amount = const Value.absent(),
+    this.date = const Value.absent(),
+    this.type = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.userId = const Value.absent(),
-    this.date = const Value.absent(),
     this.templateId = const Value.absent(),
-    this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  FixedExpensesCompanion.insert({
-    required String id,
+  TransactionsCompanion.insert({
+    this.id = const Value.absent(),
     required String name,
     required double amount,
+    required DateTime date,
+    required TransactionType type,
     required String categoryId,
     required String userId,
-    required DateTime date,
-    required String templateId,
-    this.isActive = const Value.absent(),
+    this.templateId = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        amount = Value(amount),
-       categoryId = Value(categoryId),
-       userId = Value(userId),
        date = Value(date),
-       templateId = Value(templateId);
-  static Insertable<FixedExpense> custom({
+       type = Value(type),
+       categoryId = Value(categoryId),
+       userId = Value(userId);
+  static Insertable<Transaction> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<double>? amount,
+    Expression<DateTime>? date,
+    Expression<int>? type,
     Expression<String>? categoryId,
     Expression<String>? userId,
-    Expression<DateTime>? date,
     Expression<String>? templateId,
-    Expression<bool>? isActive,
     Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (amount != null) 'amount': amount,
+      if (date != null) 'date': date,
+      if (type != null) 'type': type,
       if (categoryId != null) 'category_id': categoryId,
       if (userId != null) 'user_id': userId,
-      if (date != null) 'date': date,
       if (templateId != null) 'template_id': templateId,
-      if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  FixedExpensesCompanion copyWith({
+  TransactionsCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
     Value<double>? amount,
+    Value<DateTime>? date,
+    Value<TransactionType>? type,
     Value<String>? categoryId,
     Value<String>? userId,
-    Value<DateTime>? date,
-    Value<String>? templateId,
-    Value<bool>? isActive,
+    Value<String?>? templateId,
     Value<bool>? isSynced,
+    Value<bool>? isDeleted,
     Value<int>? rowid,
   }) {
-    return FixedExpensesCompanion(
+    return TransactionsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
+      date: date ?? this.date,
+      type: type ?? this.type,
       categoryId: categoryId ?? this.categoryId,
       userId: userId ?? this.userId,
-      date: date ?? this.date,
       templateId: templateId ?? this.templateId,
-      isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1950,6 +1738,14 @@ class FixedExpensesCompanion extends UpdateCompanion<FixedExpense> {
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(
+        $TransactionsTable.$convertertype.toSql(type.value),
+      );
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
@@ -1957,17 +1753,14 @@ class FixedExpensesCompanion extends UpdateCompanion<FixedExpense> {
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
-    if (date.present) {
-      map['date'] = Variable<DateTime>(date.value);
-    }
     if (templateId.present) {
       map['template_id'] = Variable<String>(templateId.value);
     }
-    if (isActive.present) {
-      map['is_active'] = Variable<bool>(isActive.value);
-    }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1977,417 +1770,17 @@ class FixedExpensesCompanion extends UpdateCompanion<FixedExpense> {
 
   @override
   String toString() {
-    return (StringBuffer('FixedExpensesCompanion(')
+    return (StringBuffer('TransactionsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('amount: $amount, ')
+          ..write('date: $date, ')
+          ..write('type: $type, ')
           ..write('categoryId: $categoryId, ')
           ..write('userId: $userId, ')
-          ..write('date: $date, ')
           ..write('templateId: $templateId, ')
-          ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $IncomesTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
-  @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
-    'amount',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _dateMeta = const VerificationMeta('date');
-  @override
-  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
-    'date',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
-  @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-    'user_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
-    'isSynced',
-  );
-  @override
-  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
-    'is_synced',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_synced" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    amount,
-    date,
-    userId,
-    isSynced,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'incomes';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Income> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_nameMeta);
-    }
-    if (data.containsKey('amount')) {
-      context.handle(
-        _amountMeta,
-        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_amountMeta);
-    }
-    if (data.containsKey('date')) {
-      context.handle(
-        _dateMeta,
-        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_dateMeta);
-    }
-    if (data.containsKey('user_id')) {
-      context.handle(
-        _userIdMeta,
-        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_userIdMeta);
-    }
-    if (data.containsKey('is_synced')) {
-      context.handle(
-        _isSyncedMeta,
-        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Income map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Income(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
-      amount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}amount'],
-      )!,
-      date: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}date'],
-      )!,
-      userId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}user_id'],
-      )!,
-      isSynced: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_synced'],
-      )!,
-    );
-  }
-
-  @override
-  $IncomesTable createAlias(String alias) {
-    return $IncomesTable(attachedDatabase, alias);
-  }
-}
-
-class Income extends DataClass implements Insertable<Income> {
-  final String id;
-  final String name;
-  final double amount;
-  final DateTime date;
-  final String userId;
-  final bool isSynced;
-  const Income({
-    required this.id,
-    required this.name,
-    required this.amount,
-    required this.date,
-    required this.userId,
-    required this.isSynced,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['name'] = Variable<String>(name);
-    map['amount'] = Variable<double>(amount);
-    map['date'] = Variable<DateTime>(date);
-    map['user_id'] = Variable<String>(userId);
-    map['is_synced'] = Variable<bool>(isSynced);
-    return map;
-  }
-
-  IncomesCompanion toCompanion(bool nullToAbsent) {
-    return IncomesCompanion(
-      id: Value(id),
-      name: Value(name),
-      amount: Value(amount),
-      date: Value(date),
-      userId: Value(userId),
-      isSynced: Value(isSynced),
-    );
-  }
-
-  factory Income.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Income(
-      id: serializer.fromJson<String>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
-      amount: serializer.fromJson<double>(json['amount']),
-      date: serializer.fromJson<DateTime>(json['date']),
-      userId: serializer.fromJson<String>(json['userId']),
-      isSynced: serializer.fromJson<bool>(json['isSynced']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'name': serializer.toJson<String>(name),
-      'amount': serializer.toJson<double>(amount),
-      'date': serializer.toJson<DateTime>(date),
-      'userId': serializer.toJson<String>(userId),
-      'isSynced': serializer.toJson<bool>(isSynced),
-    };
-  }
-
-  Income copyWith({
-    String? id,
-    String? name,
-    double? amount,
-    DateTime? date,
-    String? userId,
-    bool? isSynced,
-  }) => Income(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    amount: amount ?? this.amount,
-    date: date ?? this.date,
-    userId: userId ?? this.userId,
-    isSynced: isSynced ?? this.isSynced,
-  );
-  Income copyWithCompanion(IncomesCompanion data) {
-    return Income(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      amount: data.amount.present ? data.amount.value : this.amount,
-      date: data.date.present ? data.date.value : this.date,
-      userId: data.userId.present ? data.userId.value : this.userId,
-      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Income(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('amount: $amount, ')
-          ..write('date: $date, ')
-          ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, name, amount, date, userId, isSynced);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Income &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.amount == this.amount &&
-          other.date == this.date &&
-          other.userId == this.userId &&
-          other.isSynced == this.isSynced);
-}
-
-class IncomesCompanion extends UpdateCompanion<Income> {
-  final Value<String> id;
-  final Value<String> name;
-  final Value<double> amount;
-  final Value<DateTime> date;
-  final Value<String> userId;
-  final Value<bool> isSynced;
-  final Value<int> rowid;
-  const IncomesCompanion({
-    this.id = const Value.absent(),
-    this.name = const Value.absent(),
-    this.amount = const Value.absent(),
-    this.date = const Value.absent(),
-    this.userId = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  IncomesCompanion.insert({
-    required String id,
-    required String name,
-    required double amount,
-    required DateTime date,
-    required String userId,
-    this.isSynced = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
-       amount = Value(amount),
-       date = Value(date),
-       userId = Value(userId);
-  static Insertable<Income> custom({
-    Expression<String>? id,
-    Expression<String>? name,
-    Expression<double>? amount,
-    Expression<DateTime>? date,
-    Expression<String>? userId,
-    Expression<bool>? isSynced,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (amount != null) 'amount': amount,
-      if (date != null) 'date': date,
-      if (userId != null) 'user_id': userId,
-      if (isSynced != null) 'is_synced': isSynced,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  IncomesCompanion copyWith({
-    Value<String>? id,
-    Value<String>? name,
-    Value<double>? amount,
-    Value<DateTime>? date,
-    Value<String>? userId,
-    Value<bool>? isSynced,
-    Value<int>? rowid,
-  }) {
-    return IncomesCompanion(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      amount: amount ?? this.amount,
-      date: date ?? this.date,
-      userId: userId ?? this.userId,
-      isSynced: isSynced ?? this.isSynced,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
-    }
-    if (date.present) {
-      map['date'] = Variable<DateTime>(date.value);
-    }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
-    }
-    if (isSynced.present) {
-      map['is_synced'] = Variable<bool>(isSynced.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('IncomesCompanion(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('amount: $amount, ')
-          ..write('date: $date, ')
-          ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2407,7 +1800,8 @@ class $SavingsGoalsTable extends SavingsGoals
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -2449,6 +1843,21 @@ class $SavingsGoalsTable extends SavingsGoals
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
   );
@@ -2464,6 +1873,21 @@ class $SavingsGoalsTable extends SavingsGoals
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2471,7 +1895,9 @@ class $SavingsGoalsTable extends SavingsGoals
     targetAmount,
     currentSavedAmount,
     userId,
+    isActive,
     isSynced,
+    isDeleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2487,8 +1913,6 @@ class $SavingsGoalsTable extends SavingsGoals
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -2528,10 +1952,22 @@ class $SavingsGoalsTable extends SavingsGoals
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
     if (data.containsKey('is_synced')) {
       context.handle(
         _isSyncedMeta,
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
     return context;
@@ -2563,9 +1999,17 @@ class $SavingsGoalsTable extends SavingsGoals
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
       )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
       )!,
     );
   }
@@ -2582,14 +2026,18 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
   final double targetAmount;
   final double currentSavedAmount;
   final String userId;
+  final bool isActive;
   final bool isSynced;
+  final bool isDeleted;
   const SavingsGoal({
     required this.id,
     required this.name,
     required this.targetAmount,
     required this.currentSavedAmount,
     required this.userId,
+    required this.isActive,
     required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2599,7 +2047,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
     map['target_amount'] = Variable<double>(targetAmount);
     map['current_saved_amount'] = Variable<double>(currentSavedAmount);
     map['user_id'] = Variable<String>(userId);
+    map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -2610,7 +2060,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
       targetAmount: Value(targetAmount),
       currentSavedAmount: Value(currentSavedAmount),
       userId: Value(userId),
+      isActive: Value(isActive),
       isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -2627,7 +2079,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
         json['currentSavedAmount'],
       ),
       userId: serializer.fromJson<String>(json['userId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -2639,7 +2093,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
       'targetAmount': serializer.toJson<double>(targetAmount),
       'currentSavedAmount': serializer.toJson<double>(currentSavedAmount),
       'userId': serializer.toJson<String>(userId),
+      'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -2649,14 +2105,18 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
     double? targetAmount,
     double? currentSavedAmount,
     String? userId,
+    bool? isActive,
     bool? isSynced,
+    bool? isDeleted,
   }) => SavingsGoal(
     id: id ?? this.id,
     name: name ?? this.name,
     targetAmount: targetAmount ?? this.targetAmount,
     currentSavedAmount: currentSavedAmount ?? this.currentSavedAmount,
     userId: userId ?? this.userId,
+    isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
   SavingsGoal copyWithCompanion(SavingsGoalsCompanion data) {
     return SavingsGoal(
@@ -2669,7 +2129,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
           ? data.currentSavedAmount.value
           : this.currentSavedAmount,
       userId: data.userId.present ? data.userId.value : this.userId,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -2681,14 +2143,24 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
           ..write('targetAmount: $targetAmount, ')
           ..write('currentSavedAmount: $currentSavedAmount, ')
           ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced')
+          ..write('isActive: $isActive, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, targetAmount, currentSavedAmount, userId, isSynced);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    targetAmount,
+    currentSavedAmount,
+    userId,
+    isActive,
+    isSynced,
+    isDeleted,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2698,7 +2170,9 @@ class SavingsGoal extends DataClass implements Insertable<SavingsGoal> {
           other.targetAmount == this.targetAmount &&
           other.currentSavedAmount == this.currentSavedAmount &&
           other.userId == this.userId &&
-          other.isSynced == this.isSynced);
+          other.isActive == this.isActive &&
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
 class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
@@ -2707,7 +2181,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
   final Value<double> targetAmount;
   final Value<double> currentSavedAmount;
   final Value<String> userId;
+  final Value<bool> isActive;
   final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const SavingsGoalsCompanion({
     this.id = const Value.absent(),
@@ -2715,19 +2191,22 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
     this.targetAmount = const Value.absent(),
     this.currentSavedAmount = const Value.absent(),
     this.userId = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SavingsGoalsCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String name,
     required double targetAmount,
     required double currentSavedAmount,
     required String userId,
+    this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        targetAmount = Value(targetAmount),
        currentSavedAmount = Value(currentSavedAmount),
        userId = Value(userId);
@@ -2737,7 +2216,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
     Expression<double>? targetAmount,
     Expression<double>? currentSavedAmount,
     Expression<String>? userId,
+    Expression<bool>? isActive,
     Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2747,7 +2228,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
       if (currentSavedAmount != null)
         'current_saved_amount': currentSavedAmount,
       if (userId != null) 'user_id': userId,
+      if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2758,7 +2241,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
     Value<double>? targetAmount,
     Value<double>? currentSavedAmount,
     Value<String>? userId,
+    Value<bool>? isActive,
     Value<bool>? isSynced,
+    Value<bool>? isDeleted,
     Value<int>? rowid,
   }) {
     return SavingsGoalsCompanion(
@@ -2767,7 +2252,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
       targetAmount: targetAmount ?? this.targetAmount,
       currentSavedAmount: currentSavedAmount ?? this.currentSavedAmount,
       userId: userId ?? this.userId,
+      isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2790,8 +2277,14 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2807,7 +2300,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoal> {
           ..write('targetAmount: $targetAmount, ')
           ..write('currentSavedAmount: $currentSavedAmount, ')
           ..write('userId: $userId, ')
+          ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2827,7 +2322,8 @@ class $InvestmentsTable extends Investments
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    clientDefault: () => const Uuid().v4(),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -2856,6 +2352,21 @@ class $InvestmentsTable extends Investments
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
   );
@@ -2871,8 +2382,31 @@ class $InvestmentsTable extends Investments
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, amount, userId, isSynced];
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    amount,
+    userId,
+    isActive,
+    isSynced,
+    isDeleted,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2887,8 +2421,6 @@ class $InvestmentsTable extends Investments
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -2914,10 +2446,22 @@ class $InvestmentsTable extends Investments
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
     if (data.containsKey('is_synced')) {
       context.handle(
         _isSyncedMeta,
         isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
     return context;
@@ -2945,9 +2489,17 @@ class $InvestmentsTable extends Investments
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
       )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
       )!,
     );
   }
@@ -2963,13 +2515,17 @@ class Investment extends DataClass implements Insertable<Investment> {
   final String name;
   final double amount;
   final String userId;
+  final bool isActive;
   final bool isSynced;
+  final bool isDeleted;
   const Investment({
     required this.id,
     required this.name,
     required this.amount,
     required this.userId,
+    required this.isActive,
     required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2978,7 +2534,9 @@ class Investment extends DataClass implements Insertable<Investment> {
     map['name'] = Variable<String>(name);
     map['amount'] = Variable<double>(amount);
     map['user_id'] = Variable<String>(userId);
+    map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -2988,7 +2546,9 @@ class Investment extends DataClass implements Insertable<Investment> {
       name: Value(name),
       amount: Value(amount),
       userId: Value(userId),
+      isActive: Value(isActive),
       isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -3002,7 +2562,9 @@ class Investment extends DataClass implements Insertable<Investment> {
       name: serializer.fromJson<String>(json['name']),
       amount: serializer.fromJson<double>(json['amount']),
       userId: serializer.fromJson<String>(json['userId']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -3013,7 +2575,9 @@ class Investment extends DataClass implements Insertable<Investment> {
       'name': serializer.toJson<String>(name),
       'amount': serializer.toJson<double>(amount),
       'userId': serializer.toJson<String>(userId),
+      'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
@@ -3022,13 +2586,17 @@ class Investment extends DataClass implements Insertable<Investment> {
     String? name,
     double? amount,
     String? userId,
+    bool? isActive,
     bool? isSynced,
+    bool? isDeleted,
   }) => Investment(
     id: id ?? this.id,
     name: name ?? this.name,
     amount: amount ?? this.amount,
     userId: userId ?? this.userId,
+    isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
   Investment copyWithCompanion(InvestmentsCompanion data) {
     return Investment(
@@ -3036,7 +2604,9 @@ class Investment extends DataClass implements Insertable<Investment> {
       name: data.name.present ? data.name.value : this.name,
       amount: data.amount.present ? data.amount.value : this.amount,
       userId: data.userId.present ? data.userId.value : this.userId,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -3047,13 +2617,16 @@ class Investment extends DataClass implements Insertable<Investment> {
           ..write('name: $name, ')
           ..write('amount: $amount, ')
           ..write('userId: $userId, ')
-          ..write('isSynced: $isSynced')
+          ..write('isActive: $isActive, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, amount, userId, isSynced);
+  int get hashCode =>
+      Object.hash(id, name, amount, userId, isActive, isSynced, isDeleted);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3062,7 +2635,9 @@ class Investment extends DataClass implements Insertable<Investment> {
           other.name == this.name &&
           other.amount == this.amount &&
           other.userId == this.userId &&
-          other.isSynced == this.isSynced);
+          other.isActive == this.isActive &&
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
 class InvestmentsCompanion extends UpdateCompanion<Investment> {
@@ -3070,25 +2645,30 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
   final Value<String> name;
   final Value<double> amount;
   final Value<String> userId;
+  final Value<bool> isActive;
   final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   final Value<int> rowid;
   const InvestmentsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.amount = const Value.absent(),
     this.userId = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   InvestmentsCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String name,
     required double amount,
     required String userId,
+    this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        amount = Value(amount),
        userId = Value(userId);
   static Insertable<Investment> custom({
@@ -3096,7 +2676,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     Expression<String>? name,
     Expression<double>? amount,
     Expression<String>? userId,
+    Expression<bool>? isActive,
     Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3104,7 +2686,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       if (name != null) 'name': name,
       if (amount != null) 'amount': amount,
       if (userId != null) 'user_id': userId,
+      if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3114,7 +2698,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     Value<String>? name,
     Value<double>? amount,
     Value<String>? userId,
+    Value<bool>? isActive,
     Value<bool>? isSynced,
+    Value<bool>? isDeleted,
     Value<int>? rowid,
   }) {
     return InvestmentsCompanion(
@@ -3122,7 +2708,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
       name: name ?? this.name,
       amount: amount ?? this.amount,
       userId: userId ?? this.userId,
+      isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3142,8 +2730,14 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3158,7 +2752,9 @@ class InvestmentsCompanion extends UpdateCompanion<Investment> {
           ..write('name: $name, ')
           ..write('amount: $amount, ')
           ..write('userId: $userId, ')
+          ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3169,23 +2765,29 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
-  late final $ExpensesTable expenses = $ExpensesTable(this);
-  late final $FixedExpenseTemplatesTable fixedExpenseTemplates =
-      $FixedExpenseTemplatesTable(this);
-  late final $FixedExpensesTable fixedExpenses = $FixedExpensesTable(this);
-  late final $IncomesTable incomes = $IncomesTable(this);
+  late final $TemplatesTable templates = $TemplatesTable(this);
+  late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $SavingsGoalsTable savingsGoals = $SavingsGoalsTable(this);
   late final $InvestmentsTable investments = $InvestmentsTable(this);
+  late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
+  late final TransactionsDao transactionsDao = TransactionsDao(
+    this as AppDatabase,
+  );
+  late final TemplatesDao templatesDao = TemplatesDao(this as AppDatabase);
+  late final SavingsGoalsDao savingsGoalsDao = SavingsGoalsDao(
+    this as AppDatabase,
+  );
+  late final InvestmentsDao investmentsDao = InvestmentsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     categories,
-    expenses,
-    fixedExpenseTemplates,
-    fixedExpenses,
-    incomes,
+    templates,
+    transactions,
     savingsGoals,
     investments,
   ];
@@ -3193,13 +2795,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$CategoriesTableCreateCompanionBuilder =
     CategoriesCompanion Function({
-      required String id,
+      Value<String> id,
       required String name,
       required String colorHex,
       required String iconKey,
       required String userId,
       Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
@@ -3211,6 +2814,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 
@@ -3218,69 +2822,40 @@ final class $$CategoriesTableReferences
     extends BaseReferences<_$AppDatabase, $CategoriesTable, Category> {
   $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static MultiTypedResultKey<$ExpensesTable, List<Expense>> _expensesRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.expenses,
-    aliasName: $_aliasNameGenerator(db.categories.id, db.expenses.categoryId),
+  static MultiTypedResultKey<$TemplatesTable, List<Template>>
+  _templatesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.templates,
+    aliasName: $_aliasNameGenerator(db.categories.id, db.templates.categoryId),
   );
 
-  $$ExpensesTableProcessedTableManager get expensesRefs {
-    final manager = $$ExpensesTableTableManager(
+  $$TemplatesTableProcessedTableManager get templatesRefs {
+    final manager = $$TemplatesTableTableManager(
       $_db,
-      $_db.expenses,
+      $_db.templates,
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_expensesRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_templatesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
 
-  static MultiTypedResultKey<
-    $FixedExpenseTemplatesTable,
-    List<FixedExpenseTemplate>
-  >
-  _fixedExpenseTemplatesRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.fixedExpenseTemplates,
-        aliasName: $_aliasNameGenerator(
-          db.categories.id,
-          db.fixedExpenseTemplates.categoryId,
-        ),
-      );
-
-  $$FixedExpenseTemplatesTableProcessedTableManager
-  get fixedExpenseTemplatesRefs {
-    final manager = $$FixedExpenseTemplatesTableTableManager(
-      $_db,
-      $_db.fixedExpenseTemplates,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _fixedExpenseTemplatesRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$FixedExpensesTable, List<FixedExpense>>
-  _fixedExpensesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.fixedExpenses,
+  static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
+  _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.transactions,
     aliasName: $_aliasNameGenerator(
       db.categories.id,
-      db.fixedExpenses.categoryId,
+      db.transactions.categoryId,
     ),
   );
 
-  $$FixedExpensesTableProcessedTableManager get fixedExpensesRefs {
-    final manager = $$FixedExpensesTableTableManager(
+  $$TransactionsTableProcessedTableManager get transactionsRefs {
+    final manager = $$TransactionsTableTableManager(
       $_db,
-      $_db.fixedExpenses,
+      $_db.transactions,
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_fixedExpensesRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -3331,22 +2906,27 @@ class $$CategoriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  Expression<bool> expensesRefs(
-    Expression<bool> Function($$ExpensesTableFilterComposer f) f,
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> templatesRefs(
+    Expression<bool> Function($$TemplatesTableFilterComposer f) f,
   ) {
-    final $$ExpensesTableFilterComposer composer = $composerBuilder(
+    final $$TemplatesTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.expenses,
+      referencedTable: $db.templates,
       getReferencedColumn: (t) => t.categoryId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$ExpensesTableFilterComposer(
+          }) => $$TemplatesTableFilterComposer(
             $db: $db,
-            $table: $db.expenses,
+            $table: $db.templates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3356,48 +2936,22 @@ class $$CategoriesTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> fixedExpenseTemplatesRefs(
-    Expression<bool> Function($$FixedExpenseTemplatesTableFilterComposer f) f,
+  Expression<bool> transactionsRefs(
+    Expression<bool> Function($$TransactionsTableFilterComposer f) f,
   ) {
-    final $$FixedExpenseTemplatesTableFilterComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.fixedExpenseTemplates,
-          getReferencedColumn: (t) => t.categoryId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$FixedExpenseTemplatesTableFilterComposer(
-                $db: $db,
-                $table: $db.fixedExpenseTemplates,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<bool> fixedExpensesRefs(
-    Expression<bool> Function($$FixedExpensesTableFilterComposer f) f,
-  ) {
-    final $$FixedExpensesTableFilterComposer composer = $composerBuilder(
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.fixedExpenses,
+      referencedTable: $db.transactions,
       getReferencedColumn: (t) => t.categoryId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FixedExpensesTableFilterComposer(
+          }) => $$TransactionsTableFilterComposer(
             $db: $db,
-            $table: $db.fixedExpenses,
+            $table: $db.transactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3451,6 +3005,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.isSynced,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -3483,22 +3042,25 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
 
-  Expression<T> expensesRefs<T extends Object>(
-    Expression<T> Function($$ExpensesTableAnnotationComposer a) f,
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  Expression<T> templatesRefs<T extends Object>(
+    Expression<T> Function($$TemplatesTableAnnotationComposer a) f,
   ) {
-    final $$ExpensesTableAnnotationComposer composer = $composerBuilder(
+    final $$TemplatesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.expenses,
+      referencedTable: $db.templates,
       getReferencedColumn: (t) => t.categoryId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$ExpensesTableAnnotationComposer(
+          }) => $$TemplatesTableAnnotationComposer(
             $db: $db,
-            $table: $db.expenses,
+            $table: $db.templates,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3508,48 +3070,22 @@ class $$CategoriesTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> fixedExpenseTemplatesRefs<T extends Object>(
-    Expression<T> Function($$FixedExpenseTemplatesTableAnnotationComposer a) f,
+  Expression<T> transactionsRefs<T extends Object>(
+    Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
   ) {
-    final $$FixedExpenseTemplatesTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.fixedExpenseTemplates,
-          getReferencedColumn: (t) => t.categoryId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$FixedExpenseTemplatesTableAnnotationComposer(
-                $db: $db,
-                $table: $db.fixedExpenseTemplates,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<T> fixedExpensesRefs<T extends Object>(
-    Expression<T> Function($$FixedExpensesTableAnnotationComposer a) f,
-  ) {
-    final $$FixedExpensesTableAnnotationComposer composer = $composerBuilder(
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.fixedExpenses,
+      referencedTable: $db.transactions,
       getReferencedColumn: (t) => t.categoryId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FixedExpensesTableAnnotationComposer(
+          }) => $$TransactionsTableAnnotationComposer(
             $db: $db,
-            $table: $db.fixedExpenses,
+            $table: $db.transactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3573,11 +3109,7 @@ class $$CategoriesTableTableManager
           $$CategoriesTableUpdateCompanionBuilder,
           (Category, $$CategoriesTableReferences),
           Category,
-          PrefetchHooks Function({
-            bool expensesRefs,
-            bool fixedExpenseTemplatesRefs,
-            bool fixedExpensesRefs,
-          })
+          PrefetchHooks Function({bool templatesRefs, bool transactionsRefs})
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
     : super(
@@ -3599,6 +3131,7 @@ class $$CategoriesTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
@@ -3608,17 +3141,19 @@ class $$CategoriesTableTableManager
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<String> id = const Value.absent(),
                 required String name,
                 required String colorHex,
                 required String iconKey,
                 required String userId,
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
@@ -3628,6 +3163,7 @@ class $$CategoriesTableTableManager
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3639,78 +3175,52 @@ class $$CategoriesTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({
-                expensesRefs = false,
-                fixedExpenseTemplatesRefs = false,
-                fixedExpensesRefs = false,
-              }) {
+              ({templatesRefs = false, transactionsRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (expensesRefs) db.expenses,
-                    if (fixedExpenseTemplatesRefs) db.fixedExpenseTemplates,
-                    if (fixedExpensesRefs) db.fixedExpenses,
+                    if (templatesRefs) db.templates,
+                    if (transactionsRefs) db.transactions,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (expensesRefs)
+                      if (templatesRefs)
                         await $_getPrefetchedData<
                           Category,
                           $CategoriesTable,
-                          Expense
+                          Template
                         >(
                           currentTable: table,
                           referencedTable: $$CategoriesTableReferences
-                              ._expensesRefsTable(db),
+                              ._templatesRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$CategoriesTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).expensesRefs,
+                              ).templatesRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.categoryId == item.id,
                               ),
                           typedResults: items,
                         ),
-                      if (fixedExpenseTemplatesRefs)
+                      if (transactionsRefs)
                         await $_getPrefetchedData<
                           Category,
                           $CategoriesTable,
-                          FixedExpenseTemplate
+                          Transaction
                         >(
                           currentTable: table,
                           referencedTable: $$CategoriesTableReferences
-                              ._fixedExpenseTemplatesRefsTable(db),
+                              ._transactionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$CategoriesTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).fixedExpenseTemplatesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.categoryId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (fixedExpensesRefs)
-                        await $_getPrefetchedData<
-                          Category,
-                          $CategoriesTable,
-                          FixedExpense
-                        >(
-                          currentTable: table,
-                          referencedTable: $$CategoriesTableReferences
-                              ._fixedExpensesRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$CategoriesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).fixedExpensesRefs,
+                              ).transactionsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.categoryId == item.id,
@@ -3737,413 +3247,46 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableUpdateCompanionBuilder,
       (Category, $$CategoriesTableReferences),
       Category,
-      PrefetchHooks Function({
-        bool expensesRefs,
-        bool fixedExpenseTemplatesRefs,
-        bool fixedExpensesRefs,
-      })
+      PrefetchHooks Function({bool templatesRefs, bool transactionsRefs})
     >;
-typedef $$ExpensesTableCreateCompanionBuilder =
-    ExpensesCompanion Function({
-      required String id,
-      required String name,
-      required double amount,
-      required DateTime date,
-      required String categoryId,
-      required String userId,
-      Value<bool> isSynced,
-      Value<int> rowid,
-    });
-typedef $$ExpensesTableUpdateCompanionBuilder =
-    ExpensesCompanion Function({
+typedef $$TemplatesTableCreateCompanionBuilder =
+    TemplatesCompanion Function({
       Value<String> id,
-      Value<String> name,
-      Value<double> amount,
-      Value<DateTime> date,
-      Value<String> categoryId,
-      Value<String> userId,
-      Value<bool> isSynced,
-      Value<int> rowid,
-    });
-
-final class $$ExpensesTableReferences
-    extends BaseReferences<_$AppDatabase, $ExpensesTable, Expense> {
-  $$ExpensesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias(
-        $_aliasNameGenerator(db.expenses.categoryId, db.categories.id),
-      );
-
-  $$CategoriesTableProcessedTableManager get categoryId {
-    final $_column = $_itemColumn<String>('category_id')!;
-
-    final manager = $$CategoriesTableTableManager(
-      $_db,
-      $_db.categories,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-}
-
-class $$ExpensesTableFilterComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
-  $$ExpensesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get amount => $composableBuilder(
-    column: $table.amount,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get date => $composableBuilder(
-    column: $table.date,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$CategoriesTableFilterComposer get categoryId {
-    final $$CategoriesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableFilterComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$ExpensesTableOrderingComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
-  $$ExpensesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get amount => $composableBuilder(
-    column: $table.amount,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get date => $composableBuilder(
-    column: $table.date,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$CategoriesTableOrderingComposer get categoryId {
-    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableOrderingComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$ExpensesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ExpensesTable> {
-  $$ExpensesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get date =>
-      $composableBuilder(column: $table.date, builder: (column) => column);
-
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
-
-  GeneratedColumn<bool> get isSynced =>
-      $composableBuilder(column: $table.isSynced, builder: (column) => column);
-
-  $$CategoriesTableAnnotationComposer get categoryId {
-    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$ExpensesTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $ExpensesTable,
-          Expense,
-          $$ExpensesTableFilterComposer,
-          $$ExpensesTableOrderingComposer,
-          $$ExpensesTableAnnotationComposer,
-          $$ExpensesTableCreateCompanionBuilder,
-          $$ExpensesTableUpdateCompanionBuilder,
-          (Expense, $$ExpensesTableReferences),
-          Expense,
-          PrefetchHooks Function({bool categoryId})
-        > {
-  $$ExpensesTableTableManager(_$AppDatabase db, $ExpensesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ExpensesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ExpensesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ExpensesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<double> amount = const Value.absent(),
-                Value<DateTime> date = const Value.absent(),
-                Value<String> categoryId = const Value.absent(),
-                Value<String> userId = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => ExpensesCompanion(
-                id: id,
-                name: name,
-                amount: amount,
-                date: date,
-                categoryId: categoryId,
-                userId: userId,
-                isSynced: isSynced,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String name,
-                required double amount,
-                required DateTime date,
-                required String categoryId,
-                required String userId,
-                Value<bool> isSynced = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => ExpensesCompanion.insert(
-                id: id,
-                name: name,
-                amount: amount,
-                date: date,
-                categoryId: categoryId,
-                userId: userId,
-                isSynced: isSynced,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$ExpensesTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({categoryId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (categoryId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.categoryId,
-                                referencedTable: $$ExpensesTableReferences
-                                    ._categoryIdTable(db),
-                                referencedColumn: $$ExpensesTableReferences
-                                    ._categoryIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$ExpensesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $ExpensesTable,
-      Expense,
-      $$ExpensesTableFilterComposer,
-      $$ExpensesTableOrderingComposer,
-      $$ExpensesTableAnnotationComposer,
-      $$ExpensesTableCreateCompanionBuilder,
-      $$ExpensesTableUpdateCompanionBuilder,
-      (Expense, $$ExpensesTableReferences),
-      Expense,
-      PrefetchHooks Function({bool categoryId})
-    >;
-typedef $$FixedExpenseTemplatesTableCreateCompanionBuilder =
-    FixedExpenseTemplatesCompanion Function({
-      required String id,
       required String name,
       required double amount,
-      required String categoryId,
-      required String userId,
+      Value<DateTime> startDate,
       required int billingDay,
+      required TransactionType type,
+      required String userId,
+      required String categoryId,
       Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
-typedef $$FixedExpenseTemplatesTableUpdateCompanionBuilder =
-    FixedExpenseTemplatesCompanion Function({
+typedef $$TemplatesTableUpdateCompanionBuilder =
+    TemplatesCompanion Function({
       Value<String> id,
       Value<String> name,
       Value<double> amount,
-      Value<String> categoryId,
-      Value<String> userId,
+      Value<DateTime> startDate,
       Value<int> billingDay,
+      Value<TransactionType> type,
+      Value<String> userId,
+      Value<String> categoryId,
       Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 
-final class $$FixedExpenseTemplatesTableReferences
-    extends
-        BaseReferences<
-          _$AppDatabase,
-          $FixedExpenseTemplatesTable,
-          FixedExpenseTemplate
-        > {
-  $$FixedExpenseTemplatesTableReferences(
-    super.$_db,
-    super.$_table,
-    super.$_typedResult,
-  );
+final class $$TemplatesTableReferences
+    extends BaseReferences<_$AppDatabase, $TemplatesTable, Template> {
+  $$TemplatesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
       db.categories.createAlias(
-        $_aliasNameGenerator(
-          db.fixedExpenseTemplates.categoryId,
-          db.categories.id,
-        ),
+        $_aliasNameGenerator(db.templates.categoryId, db.categories.id),
       );
 
   $$CategoriesTableProcessedTableManager get categoryId {
@@ -4160,31 +3303,31 @@ final class $$FixedExpenseTemplatesTableReferences
     );
   }
 
-  static MultiTypedResultKey<$FixedExpensesTable, List<FixedExpense>>
-  _fixedExpensesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.fixedExpenses,
+  static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
+  _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.transactions,
     aliasName: $_aliasNameGenerator(
-      db.fixedExpenseTemplates.id,
-      db.fixedExpenses.templateId,
+      db.templates.id,
+      db.transactions.templateId,
     ),
   );
 
-  $$FixedExpensesTableProcessedTableManager get fixedExpensesRefs {
-    final manager = $$FixedExpensesTableTableManager(
+  $$TransactionsTableProcessedTableManager get transactionsRefs {
+    final manager = $$TransactionsTableTableManager(
       $_db,
-      $_db.fixedExpenses,
+      $_db.transactions,
     ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<String>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(_fixedExpensesRefsTable($_db));
+    final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
 }
 
-class $$FixedExpenseTemplatesTableFilterComposer
-    extends Composer<_$AppDatabase, $FixedExpenseTemplatesTable> {
-  $$FixedExpenseTemplatesTableFilterComposer({
+class $$TemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $TemplatesTable> {
+  $$TemplatesTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4206,13 +3349,24 @@ class $$FixedExpenseTemplatesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get userId => $composableBuilder(
-    column: $table.userId,
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get billingDay => $composableBuilder(
     column: $table.billingDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<TransactionType, TransactionType, int>
+  get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4226,6 +3380,11 @@ class $$FixedExpenseTemplatesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -4249,22 +3408,22 @@ class $$FixedExpenseTemplatesTableFilterComposer
     return composer;
   }
 
-  Expression<bool> fixedExpensesRefs(
-    Expression<bool> Function($$FixedExpensesTableFilterComposer f) f,
+  Expression<bool> transactionsRefs(
+    Expression<bool> Function($$TransactionsTableFilterComposer f) f,
   ) {
-    final $$FixedExpensesTableFilterComposer composer = $composerBuilder(
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.fixedExpenses,
+      referencedTable: $db.transactions,
       getReferencedColumn: (t) => t.templateId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FixedExpensesTableFilterComposer(
+          }) => $$TransactionsTableFilterComposer(
             $db: $db,
-            $table: $db.fixedExpenses,
+            $table: $db.transactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4275,9 +3434,9 @@ class $$FixedExpenseTemplatesTableFilterComposer
   }
 }
 
-class $$FixedExpenseTemplatesTableOrderingComposer
-    extends Composer<_$AppDatabase, $FixedExpenseTemplatesTable> {
-  $$FixedExpenseTemplatesTableOrderingComposer({
+class $$TemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $TemplatesTable> {
+  $$TemplatesTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4299,13 +3458,23 @@ class $$FixedExpenseTemplatesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-    column: $table.userId,
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<int> get billingDay => $composableBuilder(
     column: $table.billingDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4316,6 +3485,11 @@ class $$FixedExpenseTemplatesTableOrderingComposer
 
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4343,9 +3517,9 @@ class $$FixedExpenseTemplatesTableOrderingComposer
   }
 }
 
-class $$FixedExpenseTemplatesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FixedExpenseTemplatesTable> {
-  $$FixedExpenseTemplatesTableAnnotationComposer({
+class $$TemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TemplatesTable> {
+  $$TemplatesTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4361,19 +3535,28 @@ class $$FixedExpenseTemplatesTableAnnotationComposer
   GeneratedColumn<double> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
 
   GeneratedColumn<int> get billingDay => $composableBuilder(
     column: $table.billingDay,
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<TransactionType, int> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
 
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4398,22 +3581,22 @@ class $$FixedExpenseTemplatesTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> fixedExpensesRefs<T extends Object>(
-    Expression<T> Function($$FixedExpensesTableAnnotationComposer a) f,
+  Expression<T> transactionsRefs<T extends Object>(
+    Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
   ) {
-    final $$FixedExpensesTableAnnotationComposer composer = $composerBuilder(
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
-      referencedTable: $db.fixedExpenses,
+      referencedTable: $db.transactions,
       getReferencedColumn: (t) => t.templateId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$FixedExpensesTableAnnotationComposer(
+          }) => $$TransactionsTableAnnotationComposer(
             $db: $db,
-            $table: $db.fixedExpenses,
+            $table: $db.transactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4424,101 +3607,102 @@ class $$FixedExpenseTemplatesTableAnnotationComposer
   }
 }
 
-class $$FixedExpenseTemplatesTableTableManager
+class $$TemplatesTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $FixedExpenseTemplatesTable,
-          FixedExpenseTemplate,
-          $$FixedExpenseTemplatesTableFilterComposer,
-          $$FixedExpenseTemplatesTableOrderingComposer,
-          $$FixedExpenseTemplatesTableAnnotationComposer,
-          $$FixedExpenseTemplatesTableCreateCompanionBuilder,
-          $$FixedExpenseTemplatesTableUpdateCompanionBuilder,
-          (FixedExpenseTemplate, $$FixedExpenseTemplatesTableReferences),
-          FixedExpenseTemplate,
-          PrefetchHooks Function({bool categoryId, bool fixedExpensesRefs})
+          $TemplatesTable,
+          Template,
+          $$TemplatesTableFilterComposer,
+          $$TemplatesTableOrderingComposer,
+          $$TemplatesTableAnnotationComposer,
+          $$TemplatesTableCreateCompanionBuilder,
+          $$TemplatesTableUpdateCompanionBuilder,
+          (Template, $$TemplatesTableReferences),
+          Template,
+          PrefetchHooks Function({bool categoryId, bool transactionsRefs})
         > {
-  $$FixedExpenseTemplatesTableTableManager(
-    _$AppDatabase db,
-    $FixedExpenseTemplatesTable table,
-  ) : super(
+  $$TemplatesTableTableManager(_$AppDatabase db, $TemplatesTable table)
+    : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$FixedExpenseTemplatesTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$TemplatesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$FixedExpenseTemplatesTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$TemplatesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$FixedExpenseTemplatesTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$TemplatesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> amount = const Value.absent(),
-                Value<String> categoryId = const Value.absent(),
-                Value<String> userId = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
                 Value<int> billingDay = const Value.absent(),
+                Value<TransactionType> type = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> categoryId = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FixedExpenseTemplatesCompanion(
+              }) => TemplatesCompanion(
                 id: id,
                 name: name,
                 amount: amount,
-                categoryId: categoryId,
-                userId: userId,
+                startDate: startDate,
                 billingDay: billingDay,
+                type: type,
+                userId: userId,
+                categoryId: categoryId,
                 isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<String> id = const Value.absent(),
                 required String name,
                 required double amount,
-                required String categoryId,
-                required String userId,
+                Value<DateTime> startDate = const Value.absent(),
                 required int billingDay,
+                required TransactionType type,
+                required String userId,
+                required String categoryId,
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FixedExpenseTemplatesCompanion.insert(
+              }) => TemplatesCompanion.insert(
                 id: id,
                 name: name,
                 amount: amount,
-                categoryId: categoryId,
-                userId: userId,
+                startDate: startDate,
                 billingDay: billingDay,
+                type: type,
+                userId: userId,
+                categoryId: categoryId,
                 isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable(table),
-                  $$FixedExpenseTemplatesTableReferences(db, table, e),
+                  $$TemplatesTableReferences(db, table, e),
                 ),
               )
               .toList(),
           prefetchHooksCallback:
-              ({categoryId = false, fixedExpensesRefs = false}) {
+              ({categoryId = false, transactionsRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (fixedExpensesRefs) db.fixedExpenses,
+                    if (transactionsRefs) db.transactions,
                   ],
                   addJoins:
                       <
@@ -4541,13 +3725,11 @@ class $$FixedExpenseTemplatesTableTableManager
                               state.withJoin(
                                     currentTable: table,
                                     currentColumn: table.categoryId,
-                                    referencedTable:
-                                        $$FixedExpenseTemplatesTableReferences
-                                            ._categoryIdTable(db),
-                                    referencedColumn:
-                                        $$FixedExpenseTemplatesTableReferences
-                                            ._categoryIdTable(db)
-                                            .id,
+                                    referencedTable: $$TemplatesTableReferences
+                                        ._categoryIdTable(db),
+                                    referencedColumn: $$TemplatesTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
                                   )
                                   as T;
                         }
@@ -4556,22 +3738,21 @@ class $$FixedExpenseTemplatesTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (fixedExpensesRefs)
+                      if (transactionsRefs)
                         await $_getPrefetchedData<
-                          FixedExpenseTemplate,
-                          $FixedExpenseTemplatesTable,
-                          FixedExpense
+                          Template,
+                          $TemplatesTable,
+                          Transaction
                         >(
                           currentTable: table,
-                          referencedTable:
-                              $$FixedExpenseTemplatesTableReferences
-                                  ._fixedExpensesRefsTable(db),
+                          referencedTable: $$TemplatesTableReferences
+                              ._transactionsRefsTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$FixedExpenseTemplatesTableReferences(
+                              $$TemplatesTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).fixedExpensesRefs,
+                              ).transactionsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.templateId == item.id,
@@ -4586,58 +3767,56 @@ class $$FixedExpenseTemplatesTableTableManager
       );
 }
 
-typedef $$FixedExpenseTemplatesTableProcessedTableManager =
+typedef $$TemplatesTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $FixedExpenseTemplatesTable,
-      FixedExpenseTemplate,
-      $$FixedExpenseTemplatesTableFilterComposer,
-      $$FixedExpenseTemplatesTableOrderingComposer,
-      $$FixedExpenseTemplatesTableAnnotationComposer,
-      $$FixedExpenseTemplatesTableCreateCompanionBuilder,
-      $$FixedExpenseTemplatesTableUpdateCompanionBuilder,
-      (FixedExpenseTemplate, $$FixedExpenseTemplatesTableReferences),
-      FixedExpenseTemplate,
-      PrefetchHooks Function({bool categoryId, bool fixedExpensesRefs})
+      $TemplatesTable,
+      Template,
+      $$TemplatesTableFilterComposer,
+      $$TemplatesTableOrderingComposer,
+      $$TemplatesTableAnnotationComposer,
+      $$TemplatesTableCreateCompanionBuilder,
+      $$TemplatesTableUpdateCompanionBuilder,
+      (Template, $$TemplatesTableReferences),
+      Template,
+      PrefetchHooks Function({bool categoryId, bool transactionsRefs})
     >;
-typedef $$FixedExpensesTableCreateCompanionBuilder =
-    FixedExpensesCompanion Function({
-      required String id,
+typedef $$TransactionsTableCreateCompanionBuilder =
+    TransactionsCompanion Function({
+      Value<String> id,
       required String name,
       required double amount,
+      required DateTime date,
+      required TransactionType type,
       required String categoryId,
       required String userId,
-      required DateTime date,
-      required String templateId,
-      Value<bool> isActive,
+      Value<String?> templateId,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
-typedef $$FixedExpensesTableUpdateCompanionBuilder =
-    FixedExpensesCompanion Function({
+typedef $$TransactionsTableUpdateCompanionBuilder =
+    TransactionsCompanion Function({
       Value<String> id,
       Value<String> name,
       Value<double> amount,
+      Value<DateTime> date,
+      Value<TransactionType> type,
       Value<String> categoryId,
       Value<String> userId,
-      Value<DateTime> date,
-      Value<String> templateId,
-      Value<bool> isActive,
+      Value<String?> templateId,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 
-final class $$FixedExpensesTableReferences
-    extends BaseReferences<_$AppDatabase, $FixedExpensesTable, FixedExpense> {
-  $$FixedExpensesTableReferences(
-    super.$_db,
-    super.$_table,
-    super.$_typedResult,
-  );
+final class $$TransactionsTableReferences
+    extends BaseReferences<_$AppDatabase, $TransactionsTable, Transaction> {
+  $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
       db.categories.createAlias(
-        $_aliasNameGenerator(db.fixedExpenses.categoryId, db.categories.id),
+        $_aliasNameGenerator(db.transactions.categoryId, db.categories.id),
       );
 
   $$CategoriesTableProcessedTableManager get categoryId {
@@ -4654,20 +3833,17 @@ final class $$FixedExpensesTableReferences
     );
   }
 
-  static $FixedExpenseTemplatesTable _templateIdTable(_$AppDatabase db) =>
-      db.fixedExpenseTemplates.createAlias(
-        $_aliasNameGenerator(
-          db.fixedExpenses.templateId,
-          db.fixedExpenseTemplates.id,
-        ),
+  static $TemplatesTable _templateIdTable(_$AppDatabase db) =>
+      db.templates.createAlias(
+        $_aliasNameGenerator(db.transactions.templateId, db.templates.id),
       );
 
-  $$FixedExpenseTemplatesTableProcessedTableManager get templateId {
-    final $_column = $_itemColumn<String>('template_id')!;
-
-    final manager = $$FixedExpenseTemplatesTableTableManager(
+  $$TemplatesTableProcessedTableManager? get templateId {
+    final $_column = $_itemColumn<String>('template_id');
+    if ($_column == null) return null;
+    final manager = $$TemplatesTableTableManager(
       $_db,
-      $_db.fixedExpenseTemplates,
+      $_db.templates,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
     if (item == null) return manager;
@@ -4677,9 +3853,9 @@ final class $$FixedExpensesTableReferences
   }
 }
 
-class $$FixedExpensesTableFilterComposer
-    extends Composer<_$AppDatabase, $FixedExpensesTable> {
-  $$FixedExpensesTableFilterComposer({
+class $$TransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4701,23 +3877,29 @@ class $$FixedExpensesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<DateTime> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
+  ColumnWithTypeConverterFilters<TransactionType, TransactionType, int>
+  get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4744,34 +3926,33 @@ class $$FixedExpensesTableFilterComposer
     return composer;
   }
 
-  $$FixedExpenseTemplatesTableFilterComposer get templateId {
-    final $$FixedExpenseTemplatesTableFilterComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.templateId,
-          referencedTable: $db.fixedExpenseTemplates,
-          getReferencedColumn: (t) => t.id,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
+  $$TemplatesTableFilterComposer get templateId {
+    final $$TemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.templates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.templates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
-              }) => $$FixedExpenseTemplatesTableFilterComposer(
-                $db: $db,
-                $table: $db.fixedExpenseTemplates,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
+          ),
+    );
     return composer;
   }
 }
 
-class $$FixedExpensesTableOrderingComposer
-    extends Composer<_$AppDatabase, $FixedExpensesTable> {
-  $$FixedExpensesTableOrderingComposer({
+class $$TransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4793,23 +3974,28 @@ class $$FixedExpensesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
+  ColumnOrderings<int> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4836,34 +4022,33 @@ class $$FixedExpensesTableOrderingComposer
     return composer;
   }
 
-  $$FixedExpenseTemplatesTableOrderingComposer get templateId {
-    final $$FixedExpenseTemplatesTableOrderingComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.templateId,
-          referencedTable: $db.fixedExpenseTemplates,
-          getReferencedColumn: (t) => t.id,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
+  $$TemplatesTableOrderingComposer get templateId {
+    final $$TemplatesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.templates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TemplatesTableOrderingComposer(
+            $db: $db,
+            $table: $db.templates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
-              }) => $$FixedExpenseTemplatesTableOrderingComposer(
-                $db: $db,
-                $table: $db.fixedExpenseTemplates,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
+          ),
+    );
     return composer;
   }
 }
 
-class $$FixedExpensesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FixedExpensesTable> {
-  $$FixedExpensesTableAnnotationComposer({
+class $$TransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionsTable> {
+  $$TransactionsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -4879,17 +4064,20 @@ class $$FixedExpensesTableAnnotationComposer
   GeneratedColumn<double> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
-
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
-  GeneratedColumn<bool> get isActive =>
-      $composableBuilder(column: $table.isActive, builder: (column) => column);
+  GeneratedColumnWithTypeConverter<TransactionType, int> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4914,110 +4102,113 @@ class $$FixedExpensesTableAnnotationComposer
     return composer;
   }
 
-  $$FixedExpenseTemplatesTableAnnotationComposer get templateId {
-    final $$FixedExpenseTemplatesTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.templateId,
-          referencedTable: $db.fixedExpenseTemplates,
-          getReferencedColumn: (t) => t.id,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
+  $$TemplatesTableAnnotationComposer get templateId {
+    final $$TemplatesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.templates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TemplatesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.templates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
-              }) => $$FixedExpenseTemplatesTableAnnotationComposer(
-                $db: $db,
-                $table: $db.fixedExpenseTemplates,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
+          ),
+    );
     return composer;
   }
 }
 
-class $$FixedExpensesTableTableManager
+class $$TransactionsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $FixedExpensesTable,
-          FixedExpense,
-          $$FixedExpensesTableFilterComposer,
-          $$FixedExpensesTableOrderingComposer,
-          $$FixedExpensesTableAnnotationComposer,
-          $$FixedExpensesTableCreateCompanionBuilder,
-          $$FixedExpensesTableUpdateCompanionBuilder,
-          (FixedExpense, $$FixedExpensesTableReferences),
-          FixedExpense,
+          $TransactionsTable,
+          Transaction,
+          $$TransactionsTableFilterComposer,
+          $$TransactionsTableOrderingComposer,
+          $$TransactionsTableAnnotationComposer,
+          $$TransactionsTableCreateCompanionBuilder,
+          $$TransactionsTableUpdateCompanionBuilder,
+          (Transaction, $$TransactionsTableReferences),
+          Transaction,
           PrefetchHooks Function({bool categoryId, bool templateId})
         > {
-  $$FixedExpensesTableTableManager(_$AppDatabase db, $FixedExpensesTable table)
+  $$TransactionsTableTableManager(_$AppDatabase db, $TransactionsTable table)
     : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$FixedExpensesTableFilterComposer($db: db, $table: table),
+              $$TransactionsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$FixedExpensesTableOrderingComposer($db: db, $table: table),
+              $$TransactionsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$FixedExpensesTableAnnotationComposer($db: db, $table: table),
+              $$TransactionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> amount = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<TransactionType> type = const Value.absent(),
                 Value<String> categoryId = const Value.absent(),
                 Value<String> userId = const Value.absent(),
-                Value<DateTime> date = const Value.absent(),
-                Value<String> templateId = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
+                Value<String?> templateId = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FixedExpensesCompanion(
+              }) => TransactionsCompanion(
                 id: id,
                 name: name,
                 amount: amount,
+                date: date,
+                type: type,
                 categoryId: categoryId,
                 userId: userId,
-                date: date,
                 templateId: templateId,
-                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<String> id = const Value.absent(),
                 required String name,
                 required double amount,
+                required DateTime date,
+                required TransactionType type,
                 required String categoryId,
                 required String userId,
-                required DateTime date,
-                required String templateId,
-                Value<bool> isActive = const Value.absent(),
+                Value<String?> templateId = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FixedExpensesCompanion.insert(
+              }) => TransactionsCompanion.insert(
                 id: id,
                 name: name,
                 amount: amount,
+                date: date,
+                type: type,
                 categoryId: categoryId,
                 userId: userId,
-                date: date,
                 templateId: templateId,
-                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable(table),
-                  $$FixedExpensesTableReferences(db, table, e),
+                  $$TransactionsTableReferences(db, table, e),
                 ),
               )
               .toList(),
@@ -5046,9 +4237,9 @@ class $$FixedExpensesTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.categoryId,
-                                referencedTable: $$FixedExpensesTableReferences
+                                referencedTable: $$TransactionsTableReferences
                                     ._categoryIdTable(db),
-                                referencedColumn: $$FixedExpensesTableReferences
+                                referencedColumn: $$TransactionsTableReferences
                                     ._categoryIdTable(db)
                                     .id,
                               )
@@ -5059,9 +4250,9 @@ class $$FixedExpensesTableTableManager
                           state.withJoin(
                                 currentTable: table,
                                 currentColumn: table.templateId,
-                                referencedTable: $$FixedExpensesTableReferences
+                                referencedTable: $$TransactionsTableReferences
                                     ._templateIdTable(db),
-                                referencedColumn: $$FixedExpensesTableReferences
+                                referencedColumn: $$TransactionsTableReferences
                                     ._templateIdTable(db)
                                     .id,
                               )
@@ -5079,241 +4270,30 @@ class $$FixedExpensesTableTableManager
       );
 }
 
-typedef $$FixedExpensesTableProcessedTableManager =
+typedef $$TransactionsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $FixedExpensesTable,
-      FixedExpense,
-      $$FixedExpensesTableFilterComposer,
-      $$FixedExpensesTableOrderingComposer,
-      $$FixedExpensesTableAnnotationComposer,
-      $$FixedExpensesTableCreateCompanionBuilder,
-      $$FixedExpensesTableUpdateCompanionBuilder,
-      (FixedExpense, $$FixedExpensesTableReferences),
-      FixedExpense,
+      $TransactionsTable,
+      Transaction,
+      $$TransactionsTableFilterComposer,
+      $$TransactionsTableOrderingComposer,
+      $$TransactionsTableAnnotationComposer,
+      $$TransactionsTableCreateCompanionBuilder,
+      $$TransactionsTableUpdateCompanionBuilder,
+      (Transaction, $$TransactionsTableReferences),
+      Transaction,
       PrefetchHooks Function({bool categoryId, bool templateId})
-    >;
-typedef $$IncomesTableCreateCompanionBuilder =
-    IncomesCompanion Function({
-      required String id,
-      required String name,
-      required double amount,
-      required DateTime date,
-      required String userId,
-      Value<bool> isSynced,
-      Value<int> rowid,
-    });
-typedef $$IncomesTableUpdateCompanionBuilder =
-    IncomesCompanion Function({
-      Value<String> id,
-      Value<String> name,
-      Value<double> amount,
-      Value<DateTime> date,
-      Value<String> userId,
-      Value<bool> isSynced,
-      Value<int> rowid,
-    });
-
-class $$IncomesTableFilterComposer
-    extends Composer<_$AppDatabase, $IncomesTable> {
-  $$IncomesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get amount => $composableBuilder(
-    column: $table.amount,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get date => $composableBuilder(
-    column: $table.date,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$IncomesTableOrderingComposer
-    extends Composer<_$AppDatabase, $IncomesTable> {
-  $$IncomesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get amount => $composableBuilder(
-    column: $table.amount,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get date => $composableBuilder(
-    column: $table.date,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get userId => $composableBuilder(
-    column: $table.userId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$IncomesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $IncomesTable> {
-  $$IncomesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get date =>
-      $composableBuilder(column: $table.date, builder: (column) => column);
-
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
-
-  GeneratedColumn<bool> get isSynced =>
-      $composableBuilder(column: $table.isSynced, builder: (column) => column);
-}
-
-class $$IncomesTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $IncomesTable,
-          Income,
-          $$IncomesTableFilterComposer,
-          $$IncomesTableOrderingComposer,
-          $$IncomesTableAnnotationComposer,
-          $$IncomesTableCreateCompanionBuilder,
-          $$IncomesTableUpdateCompanionBuilder,
-          (Income, BaseReferences<_$AppDatabase, $IncomesTable, Income>),
-          Income,
-          PrefetchHooks Function()
-        > {
-  $$IncomesTableTableManager(_$AppDatabase db, $IncomesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$IncomesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$IncomesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$IncomesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<double> amount = const Value.absent(),
-                Value<DateTime> date = const Value.absent(),
-                Value<String> userId = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => IncomesCompanion(
-                id: id,
-                name: name,
-                amount: amount,
-                date: date,
-                userId: userId,
-                isSynced: isSynced,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String name,
-                required double amount,
-                required DateTime date,
-                required String userId,
-                Value<bool> isSynced = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => IncomesCompanion.insert(
-                id: id,
-                name: name,
-                amount: amount,
-                date: date,
-                userId: userId,
-                isSynced: isSynced,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$IncomesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $IncomesTable,
-      Income,
-      $$IncomesTableFilterComposer,
-      $$IncomesTableOrderingComposer,
-      $$IncomesTableAnnotationComposer,
-      $$IncomesTableCreateCompanionBuilder,
-      $$IncomesTableUpdateCompanionBuilder,
-      (Income, BaseReferences<_$AppDatabase, $IncomesTable, Income>),
-      Income,
-      PrefetchHooks Function()
     >;
 typedef $$SavingsGoalsTableCreateCompanionBuilder =
     SavingsGoalsCompanion Function({
-      required String id,
+      Value<String> id,
       required String name,
       required double targetAmount,
       required double currentSavedAmount,
       required String userId,
+      Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 typedef $$SavingsGoalsTableUpdateCompanionBuilder =
@@ -5323,7 +4303,9 @@ typedef $$SavingsGoalsTableUpdateCompanionBuilder =
       Value<double> targetAmount,
       Value<double> currentSavedAmount,
       Value<String> userId,
+      Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 
@@ -5361,8 +4343,18 @@ class $$SavingsGoalsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5401,8 +4393,18 @@ class $$SavingsGoalsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -5435,8 +4437,14 @@ class $$SavingsGoalsTableAnnotationComposer
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
 
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$SavingsGoalsTableTableManager
@@ -5475,7 +4483,9 @@ class $$SavingsGoalsTableTableManager
                 Value<double> targetAmount = const Value.absent(),
                 Value<double> currentSavedAmount = const Value.absent(),
                 Value<String> userId = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SavingsGoalsCompanion(
                 id: id,
@@ -5483,17 +4493,21 @@ class $$SavingsGoalsTableTableManager
                 targetAmount: targetAmount,
                 currentSavedAmount: currentSavedAmount,
                 userId: userId,
+                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<String> id = const Value.absent(),
                 required String name,
                 required double targetAmount,
                 required double currentSavedAmount,
                 required String userId,
+                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SavingsGoalsCompanion.insert(
                 id: id,
@@ -5501,7 +4515,9 @@ class $$SavingsGoalsTableTableManager
                 targetAmount: targetAmount,
                 currentSavedAmount: currentSavedAmount,
                 userId: userId,
+                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5531,11 +4547,13 @@ typedef $$SavingsGoalsTableProcessedTableManager =
     >;
 typedef $$InvestmentsTableCreateCompanionBuilder =
     InvestmentsCompanion Function({
-      required String id,
+      Value<String> id,
       required String name,
       required double amount,
       required String userId,
+      Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 typedef $$InvestmentsTableUpdateCompanionBuilder =
@@ -5544,7 +4562,9 @@ typedef $$InvestmentsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<double> amount,
       Value<String> userId,
+      Value<bool> isActive,
       Value<bool> isSynced,
+      Value<bool> isDeleted,
       Value<int> rowid,
     });
 
@@ -5577,8 +4597,18 @@ class $$InvestmentsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5612,8 +4642,18 @@ class $$InvestmentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -5639,8 +4679,14 @@ class $$InvestmentsTableAnnotationComposer
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
 
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$InvestmentsTableTableManager
@@ -5678,30 +4724,38 @@ class $$InvestmentsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<String> userId = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InvestmentsCompanion(
                 id: id,
                 name: name,
                 amount: amount,
                 userId: userId,
+                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<String> id = const Value.absent(),
                 required String name,
                 required double amount,
                 required String userId,
+                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InvestmentsCompanion.insert(
                 id: id,
                 name: name,
                 amount: amount,
                 userId: userId,
+                isActive: isActive,
                 isSynced: isSynced,
+                isDeleted: isDeleted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5735,14 +4789,10 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$CategoriesTableTableManager get categories =>
       $$CategoriesTableTableManager(_db, _db.categories);
-  $$ExpensesTableTableManager get expenses =>
-      $$ExpensesTableTableManager(_db, _db.expenses);
-  $$FixedExpenseTemplatesTableTableManager get fixedExpenseTemplates =>
-      $$FixedExpenseTemplatesTableTableManager(_db, _db.fixedExpenseTemplates);
-  $$FixedExpensesTableTableManager get fixedExpenses =>
-      $$FixedExpensesTableTableManager(_db, _db.fixedExpenses);
-  $$IncomesTableTableManager get incomes =>
-      $$IncomesTableTableManager(_db, _db.incomes);
+  $$TemplatesTableTableManager get templates =>
+      $$TemplatesTableTableManager(_db, _db.templates);
+  $$TransactionsTableTableManager get transactions =>
+      $$TransactionsTableTableManager(_db, _db.transactions);
   $$SavingsGoalsTableTableManager get savingsGoals =>
       $$SavingsGoalsTableTableManager(_db, _db.savingsGoals);
   $$InvestmentsTableTableManager get investments =>

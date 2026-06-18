@@ -19,7 +19,7 @@ void main() async{
   final db = AppDatabase.instance;
   SyncEngine.initialize(db);
   await signInTestUser();
-  runApp(ExpenseApp());
+  runApp(TransactionApp());
 }
 
 Future<void> signInTestUser() async {
@@ -115,7 +115,7 @@ class AppConstants {
     "Investing": 1000.0,
   };
 
-  static var fixedExpenseTemplates = [
+  static var templates = [
     {
       "id": "template_rent",
       "label": "Rent",
@@ -136,25 +136,26 @@ class AppConstants {
     (income: 2908.31 * 2, date: DateTime(2026, 3)),
     (income: 2908.31 * 2, date: DateTime(2026, 4)),
     (income: 2908.31 * 2, date: DateTime(2026, 5)),
+    (income: 2908.31 * 2, date: DateTime(2026, 6)),
   ];
 
-  // static List<Expense> allExpenses = [
-  //   Expense(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-  //   Expense(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
-  //   Expense(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
-  //   Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
-  //   Expense(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
-  //   Expense(id: '5', label: 'Hydro', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 5, 11)),
+  // static List<Transaction> allTransactions = [
+  //   Transaction(id: '2', label: 'Hydro', fixedAmount: 0, variableAmount: 61, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+  //   Transaction(id: '3', label: 'Water', fixedAmount: 0, variableAmount: 111, tags: ['Utility'], date: DateTime(2026, 4, 11)),
+  //   Transaction(id: '4', label: 'Hydro', fixedAmount: 0, variableAmount: 50, tags: ['Utility'], date: DateTime(2026, 3, 11)),
+  //   Transaction(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+  //   Transaction(id: '5', label: 'Uber', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 3, 11)),
+  //   Transaction(id: '5', label: 'Hydro', fixedAmount: 0, variableAmount: 15, tags: ['Transport'], date: DateTime(2026, 5, 11)),
   // ];
 }
-class ExpenseApp extends StatefulWidget {
-  const ExpenseApp({super.key});
+class TransactionApp extends StatefulWidget {
+  const TransactionApp({super.key});
 
   @override
-  State<ExpenseApp> createState() => ExpenseAppState();
+  State<TransactionApp> createState() => TransactionAppState();
 }
 
-class ExpenseAppState extends State<ExpenseApp> {
+class TransactionAppState extends State<TransactionApp> {
   ThemeMode _currentMode = ThemeMode.dark;
   // ElevatedButton
 
@@ -333,7 +334,7 @@ class ExpenseAppState extends State<ExpenseApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Expense Tracker App',
+      title: 'Transaction Tracker App',
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: _currentMode,

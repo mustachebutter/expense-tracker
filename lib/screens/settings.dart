@@ -3,6 +3,7 @@ import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/ledger_list.dart';
 import 'package:expense_tracker/widgets/panel.dart';
+import 'package:expense_tracker/widgets/stream_panel.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -31,240 +32,237 @@ class _SettingsState extends State<Settings> {
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
-        child: StreamBuilder<List<FixedExpense>>(
-          stream: AppDatabase.instance.watchAllFixedExpenses(),
-          builder: (context, snapshot) {
-            final fixedExpenses = snapshot.data ?? [];
-            
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Manage Settings", style: titleTextStyle),
-                      const Text(
-                        "Manage your budgets, tags, and fixed expenses here",
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-
-                      SizedBox(height: 20),
-                    ],
+                  Text("Manage Settings", style: titleTextStyle),
+                  const Text(
+                    "Manage your budgets, tags, and fixed transactions here",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
-                  // Contents
-                  Column(
-                    children: [
-                      Panel(
-                        elementItemBuilder: (context, index) {
-                          final categories = AppDatabase.instance.categoryList;
-                          final currentCategory = categories.elementAt(index);
 
-                          return Container(
-                            color: colorScheme.surface,
-                            child: ListTile(
-                              leading: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: AppConstants.getColorFromHex(currentCategory.colorHex),
-                                  shape: BoxShape.circle,
+                  SizedBox(height: 20),
+                ],
+              ),
+              // Contents
+              Column(
+                children: [
+                  StreamPanel<Category>(
+                    dataStream: AppDatabase.instance.categoriesDao.watchAllActiveCategories(),
+                    elementItemBuilder: (context, item) {
+                      return Container(
+                        color: colorScheme.surface,
+                        child: ListTile(
+                          leading: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppConstants.getColorFromHex(item.colorHex),
+                              shape: BoxShape.circle,
+                            ),
+                            child: AppConstants.getIcon(item.iconKey),
+                          ),
+
+                          title: Text(item.name),
+
+                          trailing: Row(
+                            // NOTE: Row is greedy and will likely take up the entire horizontal space
+                            // We would need to do MainAxisSize min here to stop it from being greedy
+                            // and shrink-wrap to the content inside of it
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    button: ElevatedButton.icon(
+                      onPressed: () {},
+                      label: Text("Add Category"),
+                      icon: Icon(Icons.add),
+                    ),
+                    titleLabel: "Categories",
+                  ),
+
+                  SizedBox(height: 20),
+
+                  StreamPanel<SavingsGoal>(
+                    dataStream: AppDatabase.instance.savingsGoalsDao.watchAvailableSavingsGoals(),
+                    elementItemBuilder: (context, item) {
+                      return Container(
+                        color: colorScheme.surface,
+                        child: ListTile(
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "\$${item.targetAmount.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontWeight: textTheme.displaySmall!.fontWeight,
+                                  fontSize: textTheme.displaySmall!.fontSize,
                                 ),
-                                child: AppConstants.getIcon(currentCategory.iconKey),
                               ),
-
-                              title: Text(currentCategory.name),
-
-                              trailing: Row(
-                                // NOTE: Row is greedy and will likely take up the entire horizontal space
-                                // We would need to do MainAxisSize min here to stop it from being greedy
-                                // and shrink-wrap to the content inside of it
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.edit),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.delete),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        elementCount: AppDatabase.instance.categoryList.length,
-                        button: ElevatedButton.icon(
-                          onPressed: () {},
-                          label: Text("Add Category"),
-                          icon: Icon(Icons.add),
-                        ),
-                        titleLabel: "Categories",
-                      ),
-
-                      SizedBox(height: 20),
-
-                      Panel(
-                        elementItemBuilder: (context, index) {
-                          final monthlyIncome = AppConstants.monthlyIncome.values
-                              .elementAt(index);
-
-                          return ListTile(
-                            title: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "\$${monthlyIncome.toStringAsFixed(2)}",
-                                  style: TextStyle(
-                                    fontWeight: textTheme.displaySmall!.fontWeight,
-                                    fontSize: textTheme.displaySmall!.fontSize,
-                                  ),
+                              Text(
+                                "${item.name} Goal",
+                                style: TextStyle(
+                                  fontWeight: textTheme.titleSmall!.fontWeight,
+                                  fontSize: textTheme.titleSmall!.fontSize,
                                 ),
-                                Text(
-                                  "Current Month ${DateTime.now().month}/${DateTime.now().year}",
-                                  style: TextStyle(
-                                    fontWeight: textTheme.titleSmall!.fontWeight,
-                                    fontSize: textTheme.titleSmall!.fontSize,
-                                  ),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    button: ElevatedButton.icon(
+                      onPressed: () {},
+                      label: Text("Edit"),
+                      icon: Icon(Icons.edit),
+                    ),
+                    titleLabel: "Savings & Investments",
+                  ),
+
+                  SizedBox(height: 20),
+
+                  //TODO: Render income templates and expense templates here
+                  StreamPanel<Template>(
+                    dataStream: AppDatabase.instance.templatesDao.watchAllTemplates(),
+                    elementItemBuilder: (context, item) {
+                      return Container(
+                        color: colorScheme.surface,
+                        child: ListTile(
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "\$${item.amount.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontWeight: textTheme.displaySmall!.fontWeight,
+                                  fontSize: textTheme.displaySmall!.fontSize,
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                        elementCount: AppConstants.monthlyIncome.length,
-                        button: ElevatedButton.icon(
-                          onPressed: () {},
-                          label: Text("Edit"),
-                          icon: Icon(Icons.edit),
+                              ),
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontWeight: textTheme.titleSmall!.fontWeight,
+                                  fontSize: textTheme.titleSmall!.fontSize,
+                                ),
+                              ),
+                              Text(
+                                "On day ${item.billingDay} of each month",
+                                style: TextStyle(
+                                  fontWeight: textTheme.titleSmall!.fontWeight,
+                                  fontSize: textTheme.titleSmall!.fontSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
                         ),
-                        titleLabel: "Monthly Income",
-                      ),
+                      );
+                    },
+                    button: ElevatedButton.icon(
+                      onPressed: () {},
+                      label: Text("Edit"),
+                      icon: Icon(Icons.edit),
+                    ),
+                    titleLabel: "Fixed Transactions",
+                  ),
 
-                      SizedBox(height: 20),
+                  SizedBox(height: 20),
 
-                      Panel(
-                        elementItemBuilder: (context, index) {
-
-                          final String investmentName = AppConstants.financialGoals.keys
-                              .elementAt(index);
-                          final double investmentAmount = AppConstants.financialGoals.values
-                              .elementAt(index);
-
-                          return Container(
-                            color: colorScheme.surface,
-                            child: ListTile(
-                              title: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "\$${investmentAmount.toStringAsFixed(2)}",
-                                    style: TextStyle(
-                                      fontWeight: textTheme.displaySmall!.fontWeight,
-                                      fontSize: textTheme.displaySmall!.fontSize,
-                                    ),
-                                  ),
-                                  Text(
-                                    "$investmentName Goal",
-                                    style: TextStyle(
-                                      fontWeight: textTheme.titleSmall!.fontWeight,
-                                      fontSize: textTheme.titleSmall!.fontSize,
-                                    ),
-                                  ),
-                                ],
+                  StreamPanel<Investment>(
+                    dataStream: AppDatabase.instance.investmentsDao.watchAvailableInvestments(),
+                    elementItemBuilder: (context, item) {
+                      return Container(
+                        color: colorScheme.surface,
+                        child: ListTile(
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "\$${item.amount.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontWeight: textTheme.displaySmall!.fontWeight,
+                                  fontSize: textTheme.displaySmall!.fontSize,
+                                ),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.edit),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.delete),
-                                  ),
-                                ],
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontWeight: textTheme.titleSmall!.fontWeight,
+                                  fontSize: textTheme.titleSmall!.fontSize,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                        elementCount: AppConstants.financialGoals.length,
-                        button: ElevatedButton.icon(
-                          onPressed: () {},
-                          label: Text("Edit"),
-                          icon: Icon(Icons.edit),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.edit),
+                              ),
+                              IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.delete),
+                              ),
+                            ],
+                          ),
                         ),
-                        titleLabel: "Savings & Investments",
-                      ),
-
-                      SizedBox(height: 20),
-
-                      Panel(
-                        elementItemBuilder: (context, index) {
-                          final fixedExpense = fixedExpenses.elementAt(index);
-
-                          return Container(
-                            color: colorScheme.surface,
-                            child: ListTile(
-                              title: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "\$${fixedExpense.amount.toStringAsFixed(2)}",
-                                    style: TextStyle(
-                                      fontWeight: textTheme.displaySmall!.fontWeight,
-                                      fontSize: textTheme.displaySmall!.fontSize,
-                                    ),
-                                  ),
-                                  Text(
-                                    fixedExpense.name,
-                                    style: TextStyle(
-                                      fontWeight: textTheme.titleSmall!.fontWeight,
-                                      fontSize: textTheme.titleSmall!.fontSize,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.edit),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: Icon(Icons.delete),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        elementCount: AppConstants.fixedExpenseTemplates.length,
-                        button: ElevatedButton.icon(
-                          onPressed: () {},
-                          label: Text("Edit"),
-                          icon: Icon(Icons.edit),
-                        ),
-                        titleLabel: "Fixed Expenses",
-                      ),
-                      // Panel(
-                      //   elementItemBuilder: elementItemBuilder,
-                      //   elements: elements,
-                      //   button: button,
-                      //   titleLabel: "Fixed Expenses",
-                      // ),
-                    ],
+                      );
+                    },
+                    button: ElevatedButton.icon(
+                      onPressed: () {},
+                      label: Text("Edit"),
+                      icon: Icon(Icons.edit),
+                    ),
+                    titleLabel: "Fixed Transactions",
                   ),
                 ],
               ),
-            );
-          }
-        ) 
+            ],
+          ),
+        )
       ),
     );
   }

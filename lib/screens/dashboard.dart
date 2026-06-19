@@ -27,20 +27,9 @@ class _DashboardState extends State<Dashboard> {
   final DateTime _startMonth = DateTime(2026, 3);
   final DateTime _endMonth = DateTime.now();
   
-  final List<String> _filters = ["All", "food", "transport", "Entertainment", "Shopping", "Utility", "Health", "Other"];
-
+  late Future<List<Category>> _categoriesFuture;
 
   String _activeFilter = "All";
-
-  List<Transaction> _generateVariableTransactionsOfFilter(List<Transaction> transactions, DateTime targetDatetime)
-  {
-    var generatedTransactions = transactions.where((e) =>
-      e.date.year == targetDatetime.year && e.date.month == targetDatetime.month
-    ).toList();
-
-    if (_activeFilter == "All") return generatedTransactions;
-    return generatedTransactions.where((e) => e.categoryId == _activeFilter).toList();
-  }
     
   void onFilterChanged (String newFilter) 
   {
@@ -51,29 +40,14 @@ class _DashboardState extends State<Dashboard> {
     return ((endDt.year - startDt.year) * 12) + (endDt.month - startDt.month);
   }
 
-  double totalIncomeOfMonth(DateTime monthToFind) {
-    return AppConstants.allIncome.firstWhere((item) => item.date.month == monthToFind.month).income;
-  }
-
-  double totalTransactionOfFilterOfMonth(List<Transaction> transactions, DateTime monthToFind) {
-    return _generateVariableTransactionsOfFilter(transactions, monthToFind)
-      .fold(0, (sum, item) => sum + item.amount);
-  }
-
-  double totalTransactionOfMonth(List<Transaction> transactions, DateTime monthToFind) {
-    var allTransactions = transactions.where((e) =>
-      e.date.year == monthToFind.year && e.date.month == monthToFind.month
-    ).toList();
-
-    return allTransactions.fold(0, (sum, item) => sum + item.amount);
-  }
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SyncEngine.instance.runStartUpSync();
     });
+
+    _categoriesFuture = AppDatabase.instance.categoriesDao.getAllActiveCategories();
   }
   @override
   Widget build(BuildContext context) {
@@ -147,33 +121,44 @@ class _DashboardState extends State<Dashboard> {
                         ),
                         const SizedBox(width: 30,),
                         
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: Wrap(
-                                  spacing: 8,
-                                  alignment: WrapAlignment.start,
-                                  children: _filters.map((filterName) {
-                                    bool isSelected = _activeFilter == filterName;
+                        FutureBuilder(
+                          future: _categoriesFuture,
+                          builder: (context, snapshot) {
+                            final categories = snapshot.data ?? [];
+                            final categoryNames = categories.map((c) => c.name).toList();
 
-                                    return ChoiceChip(
-                                      label: Text(filterName),
-                                      selected: isSelected,
-                                      onSelected: (bool userClickedIt) {
-                                        onFilterChanged(filterName);
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              const SizedBox(height: 20,),
-                              _populateLedgerLists()
-                            ],
-                          )
-                        )
+                            final filters = ["All", ...categoryNames];
+
+                            
+                            return Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Wrap(
+                                      spacing: 8,
+                                      alignment: WrapAlignment.start,
+                                      children: filters.map((filterName) {
+                                        bool isSelected = _activeFilter == filterName;
+
+                                        return ChoiceChip(
+                                          label: Text(filterName),
+                                          selected: isSelected,
+                                          onSelected: (bool userClickedIt) {
+                                            onFilterChanged(filterName);
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20,),
+                                  _populateLedgerLists()
+                                ],
+                              )
+                            );
+                          }
+                        ),
                       ],
                     );
                   }

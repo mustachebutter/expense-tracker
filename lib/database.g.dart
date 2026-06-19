@@ -50,6 +50,15 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<TransactionType, int> type =
+      GeneratedColumn<int>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<TransactionType>($CategoriesTable.$convertertype);
   static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
@@ -110,6 +119,7 @@ class $CategoriesTable extends Categories
     name,
     colorHex,
     iconKey,
+    type,
     userId,
     isActive,
     isSynced,
@@ -205,6 +215,12 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}icon_key'],
       )!,
+      type: $CategoriesTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
       userId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
@@ -228,6 +244,9 @@ class $CategoriesTable extends Categories
   $CategoriesTable createAlias(String alias) {
     return $CategoriesTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<TransactionType, int, int> $convertertype =
+      const EnumIndexConverter<TransactionType>(TransactionType.values);
 }
 
 class Category extends DataClass implements Insertable<Category> {
@@ -235,6 +254,7 @@ class Category extends DataClass implements Insertable<Category> {
   final String name;
   final String colorHex;
   final String iconKey;
+  final TransactionType type;
   final String userId;
   final bool isActive;
   final bool isSynced;
@@ -244,6 +264,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.name,
     required this.colorHex,
     required this.iconKey,
+    required this.type,
     required this.userId,
     required this.isActive,
     required this.isSynced,
@@ -256,6 +277,9 @@ class Category extends DataClass implements Insertable<Category> {
     map['name'] = Variable<String>(name);
     map['color_hex'] = Variable<String>(colorHex);
     map['icon_key'] = Variable<String>(iconKey);
+    {
+      map['type'] = Variable<int>($CategoriesTable.$convertertype.toSql(type));
+    }
     map['user_id'] = Variable<String>(userId);
     map['is_active'] = Variable<bool>(isActive);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -269,6 +293,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: Value(name),
       colorHex: Value(colorHex),
       iconKey: Value(iconKey),
+      type: Value(type),
       userId: Value(userId),
       isActive: Value(isActive),
       isSynced: Value(isSynced),
@@ -286,6 +311,9 @@ class Category extends DataClass implements Insertable<Category> {
       name: serializer.fromJson<String>(json['name']),
       colorHex: serializer.fromJson<String>(json['colorHex']),
       iconKey: serializer.fromJson<String>(json['iconKey']),
+      type: $CategoriesTable.$convertertype.fromJson(
+        serializer.fromJson<int>(json['type']),
+      ),
       userId: serializer.fromJson<String>(json['userId']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -300,6 +328,9 @@ class Category extends DataClass implements Insertable<Category> {
       'name': serializer.toJson<String>(name),
       'colorHex': serializer.toJson<String>(colorHex),
       'iconKey': serializer.toJson<String>(iconKey),
+      'type': serializer.toJson<int>(
+        $CategoriesTable.$convertertype.toJson(type),
+      ),
       'userId': serializer.toJson<String>(userId),
       'isActive': serializer.toJson<bool>(isActive),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -312,6 +343,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? name,
     String? colorHex,
     String? iconKey,
+    TransactionType? type,
     String? userId,
     bool? isActive,
     bool? isSynced,
@@ -321,6 +353,7 @@ class Category extends DataClass implements Insertable<Category> {
     name: name ?? this.name,
     colorHex: colorHex ?? this.colorHex,
     iconKey: iconKey ?? this.iconKey,
+    type: type ?? this.type,
     userId: userId ?? this.userId,
     isActive: isActive ?? this.isActive,
     isSynced: isSynced ?? this.isSynced,
@@ -332,6 +365,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: data.name.present ? data.name.value : this.name,
       colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
       iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
+      type: data.type.present ? data.type.value : this.type,
       userId: data.userId.present ? data.userId.value : this.userId,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -346,6 +380,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('name: $name, ')
           ..write('colorHex: $colorHex, ')
           ..write('iconKey: $iconKey, ')
+          ..write('type: $type, ')
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
@@ -360,6 +395,7 @@ class Category extends DataClass implements Insertable<Category> {
     name,
     colorHex,
     iconKey,
+    type,
     userId,
     isActive,
     isSynced,
@@ -373,6 +409,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.name == this.name &&
           other.colorHex == this.colorHex &&
           other.iconKey == this.iconKey &&
+          other.type == this.type &&
           other.userId == this.userId &&
           other.isActive == this.isActive &&
           other.isSynced == this.isSynced &&
@@ -384,6 +421,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> name;
   final Value<String> colorHex;
   final Value<String> iconKey;
+  final Value<TransactionType> type;
   final Value<String> userId;
   final Value<bool> isActive;
   final Value<bool> isSynced;
@@ -394,6 +432,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.name = const Value.absent(),
     this.colorHex = const Value.absent(),
     this.iconKey = const Value.absent(),
+    this.type = const Value.absent(),
     this.userId = const Value.absent(),
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -405,6 +444,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String name,
     required String colorHex,
     required String iconKey,
+    required TransactionType type,
     required String userId,
     this.isActive = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -413,12 +453,14 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   }) : name = Value(name),
        colorHex = Value(colorHex),
        iconKey = Value(iconKey),
+       type = Value(type),
        userId = Value(userId);
   static Insertable<Category> custom({
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? colorHex,
     Expression<String>? iconKey,
+    Expression<int>? type,
     Expression<String>? userId,
     Expression<bool>? isActive,
     Expression<bool>? isSynced,
@@ -430,6 +472,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (name != null) 'name': name,
       if (colorHex != null) 'color_hex': colorHex,
       if (iconKey != null) 'icon_key': iconKey,
+      if (type != null) 'type': type,
       if (userId != null) 'user_id': userId,
       if (isActive != null) 'is_active': isActive,
       if (isSynced != null) 'is_synced': isSynced,
@@ -443,6 +486,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? name,
     Value<String>? colorHex,
     Value<String>? iconKey,
+    Value<TransactionType>? type,
     Value<String>? userId,
     Value<bool>? isActive,
     Value<bool>? isSynced,
@@ -454,6 +498,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       name: name ?? this.name,
       colorHex: colorHex ?? this.colorHex,
       iconKey: iconKey ?? this.iconKey,
+      type: type ?? this.type,
       userId: userId ?? this.userId,
       isActive: isActive ?? this.isActive,
       isSynced: isSynced ?? this.isSynced,
@@ -476,6 +521,11 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     }
     if (iconKey.present) {
       map['icon_key'] = Variable<String>(iconKey.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(
+        $CategoriesTable.$convertertype.toSql(type.value),
+      );
     }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
@@ -502,6 +552,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('name: $name, ')
           ..write('colorHex: $colorHex, ')
           ..write('iconKey: $iconKey, ')
+          ..write('type: $type, ')
           ..write('userId: $userId, ')
           ..write('isActive: $isActive, ')
           ..write('isSynced: $isSynced, ')
@@ -2799,6 +2850,7 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       required String name,
       required String colorHex,
       required String iconKey,
+      required TransactionType type,
       required String userId,
       Value<bool> isActive,
       Value<bool> isSynced,
@@ -2811,6 +2863,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> colorHex,
       Value<String> iconKey,
+      Value<TransactionType> type,
       Value<String> userId,
       Value<bool> isActive,
       Value<bool> isSynced,
@@ -2889,6 +2942,12 @@ class $$CategoriesTableFilterComposer
   ColumnFilters<String> get iconKey => $composableBuilder(
     column: $table.iconKey,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<TransactionType, TransactionType, int>
+  get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get userId => $composableBuilder(
@@ -2991,6 +3050,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnOrderings(column),
@@ -3032,6 +3096,9 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get iconKey =>
       $composableBuilder(column: $table.iconKey, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TransactionType, int> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
 
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
@@ -3128,6 +3195,7 @@ class $$CategoriesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> colorHex = const Value.absent(),
                 Value<String> iconKey = const Value.absent(),
+                Value<TransactionType> type = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -3138,6 +3206,7 @@ class $$CategoriesTableTableManager
                 name: name,
                 colorHex: colorHex,
                 iconKey: iconKey,
+                type: type,
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,
@@ -3150,6 +3219,7 @@ class $$CategoriesTableTableManager
                 required String name,
                 required String colorHex,
                 required String iconKey,
+                required TransactionType type,
                 required String userId,
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -3160,6 +3230,7 @@ class $$CategoriesTableTableManager
                 name: name,
                 colorHex: colorHex,
                 iconKey: iconKey,
+                type: type,
                 userId: userId,
                 isActive: isActive,
                 isSynced: isSynced,

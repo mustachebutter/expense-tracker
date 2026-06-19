@@ -81,26 +81,34 @@ class _DashboardState extends State<Dashboard> {
 
               const SizedBox(height: 30,),
 
-              // screenWidth < 600 
-              // ? Column(
-              //     children: [
-              //     SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,),
-              //     const SizedBox(height: 20,),
-              //     SummaryCard(title: "Total Transaction", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,),
-              //     const SizedBox(height: 20,),
-              //     SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,),
-              //   ],
-              // )
-              // : Row(
-              //     children: [
-              //       Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${totalIncome.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
-              //       const SizedBox(width: 20,),
-              //       Expanded(child: SummaryCard(title: "Total Transaction", amount: "\$${totalOut.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
-              //       const SizedBox(width: 20,),
-              //       Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
-              //     ],
-              // ),
+              StreamBuilder<DashboardMetrics>(
+                stream: AppDatabase.instance.transactionsDao.watchDashboardMetrics(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return CircularProgressIndicator();
 
+                  final metrics = snapshot.data!;
+
+                  return screenWidth < 600 
+                    ? Column(
+                        children: [
+                        SummaryCard(title: "Monthly Income", amount: "\$${metrics.income.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,),
+                        const SizedBox(height: 20,),
+                        SummaryCard(title: "Total Transaction", amount: "\$${metrics.expense.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,),
+                        const SizedBox(height: 20,),
+                        SummaryCard(title: "Cash Flow", amount: "\$${metrics.cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,),
+                      ],
+                    )
+                    : Row(
+                        children: [
+                          Expanded(child: SummaryCard(title: "Monthly Income", amount: "\$${metrics.income.toStringAsFixed(2)}", icon: Icons.account_balance, iconColor: Colors.grey,)),
+                          const SizedBox(width: 20,),
+                          Expanded(child: SummaryCard(title: "Total Transaction", amount: "\$${metrics.expense.toStringAsFixed(2)}", icon: Icons.trending_down, iconColor: Colors.grey,)),
+                          const SizedBox(width: 20,),
+                          Expanded(child: SummaryCard(title: "Cash Flow", amount: "\$${metrics.cashFlow.toStringAsFixed(2)}", icon: Icons.trending_up, iconColor: Colors.green,)),
+                        ],
+                    );
+                },
+              ),
 
               const SizedBox(height: 30,),
 

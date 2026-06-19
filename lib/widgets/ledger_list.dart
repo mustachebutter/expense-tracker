@@ -25,11 +25,13 @@ class LedgerList extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     double totalTransactionOfFilter() => transactionsWithCategory.sumBy((item) {
-      if (activeFilter == "All") return item.expense.amount;
+      if (activeFilter == "All" && item.expense.type == TransactionType.expense) return item.expense.amount;
       return item.category.name == activeFilter ? item.expense.amount : 0.0;
     });
 
-    double totalTransaction() => transactionsWithCategory.sumBy((item) => item.expense.amount);
+    double totalTransaction() => transactionsWithCategory.sumBy((item) {
+      return item.expense.type == TransactionType.expense ? item.expense.amount : 0.0;
+    });
     double totalFixedTransaction() => transactionsWithCategory.sumBy((item) {
       return item.expense.templateId != null ? item.expense.amount : 0.0;
     });
@@ -38,13 +40,17 @@ class LedgerList extends StatelessWidget
     });
 
     // NOTE: We filter the transaction here to render in the UI
-    List<TransactionWithCategory> transactionsToRender = transactionsWithCategory.where((t) {
-      if (activeFilter == "All") return true;
+    List<TransactionWithCategory> activeFilterTypeTransactions = transactionsWithCategory.where((t) {
+      if (activeFilter == "All") return t.expense.type == TransactionType.expense;
       return t.category.name == activeFilter;
     }).toList();
 
     final List<TransactionWithCategory> fixedTransactions = transactionsWithCategory
       .where((t) => t.expense.templateId != null)
+      .toList();
+    
+    final List<TransactionWithCategory> incomeTransactions = transactionsWithCategory
+      .where((t) => t.expense.type == TransactionType.income)
       .toList();
 
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -109,7 +115,7 @@ class LedgerList extends StatelessWidget
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Fixed Transactions", style: TextStyle(fontWeight: FontWeight.w900),),
+                                const Text("Income", style: TextStyle(fontWeight: FontWeight.w900),),
                                 TextButton.icon( 
                                   onPressed: () {
                                     //TODO: Add fixed transactions handler
@@ -122,20 +128,20 @@ class LedgerList extends StatelessWidget
                           ),
 
                           //TODO: Change this to income!
-                          fixedTransactions.isEmpty
+                          incomeTransactions.isEmpty
                             ? Padding(
                               padding: EdgeInsets.all(40.0),
                               child: Text(
-                                "No fixed transactions! ദ്ദി(•ᴗ•)"
+                                "No income yet! ദ്ദി(•ᴗ•)"
                               )
                             )
                             : ListView.separated( 
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: fixedTransactions.length,
+                              itemCount: incomeTransactions.length,
                               separatorBuilder: (context, index) => Divider(height: 1, color: colorScheme.outlineVariant),
                               itemBuilder: (context, index) {
-                                final item = fixedTransactions[index];
+                                final item = incomeTransactions[index];
                                 return Container(
                                   color: colorScheme.surface,
                                   child: ListTile(
@@ -160,7 +166,7 @@ class LedgerList extends StatelessWidget
                   ),
 
                   // Variable Transactions
-                  transactionsToRender.isEmpty
+                  activeFilterTypeTransactions.isEmpty
                     ? Padding(
                       padding: EdgeInsets.all(40.0),
                       child: Text(
@@ -170,11 +176,11 @@ class LedgerList extends StatelessWidget
                     : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: transactionsToRender.length,
+                    itemCount: activeFilterTypeTransactions.length,
                     separatorBuilder: (context, index) => const Divider(height: 1,),
                     itemBuilder: (context, index) {
-                      final expense = transactionsToRender[index].expense;
-                      final category = transactionsToRender[index].category;
+                      final expense = activeFilterTypeTransactions[index].expense;
+                      final category = activeFilterTypeTransactions[index].category;
                       
                       Color chipColor = AppConstants.getColorFromHex(category.colorHex ?? "9E9E9E");
                       

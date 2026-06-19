@@ -24,7 +24,10 @@ class Categories extends Table
   TextColumn get name => text()();
   TextColumn get colorHex => text()();
   TextColumn get iconKey => text()();
+  IntColumn get type => intEnum<TransactionType>()();
+
   TextColumn get userId => text()();
+
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();

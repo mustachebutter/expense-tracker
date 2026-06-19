@@ -165,6 +165,7 @@ class SyncEngine
           name: drift.Value(row['name']),
           colorHex: drift.Value(row['color_hex']),
           iconKey: drift.Value(row['icon_key']),
+          type: drift.Value(TransactionType.values[row['type'] as int]),
           userId: drift.Value(row['user_id']),
           isActive: drift.Value(row['is_active']),
           isDeleted: drift.Value(row['is_deleted']),

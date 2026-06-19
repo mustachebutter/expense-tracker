@@ -15,6 +15,8 @@ class TransactionWithCategory
   });
 }
 
+typedef DashboardMetrics = ({ double income, double expense, double cashFlow });
+
 @DriftAccessor(tables: [Transactions, Categories, Templates])
 class TransactionsDao extends BaseDao<Transactions, Transaction> with _$TransactionsDaoMixin
 {
@@ -39,6 +41,29 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     final row = await query.getSingleOrNull();
 
     return row?.read(earliestDate);
+  }
+
+  Stream<DashboardMetrics> watchDashboardMetrics()
+  {
+    final incomeSum = transactions.amount.sum(
+      filter: transactions.type.equalsValue(TransactionType.income)
+    );
+
+    final expenseSum = transactions.amount.sum(
+      filter: transactions.type.equalsValue(TransactionType.expense)
+    );
+
+    final query = selectOnly(transactions)
+      ..addColumns([incomeSum, expenseSum])
+      ..where(transactions.isDeleted.equals(false));
+
+    return query.watchSingle().map((row) {
+      final income = row.read(incomeSum) ?? 0.0;
+      final expense = row.read(expenseSum) ?? 0.0;
+      final cashFlow = income - expense;
+
+      return (income: income, expense: expense, cashFlow: cashFlow);
+    });
   }
 
   Future<bool> softDelete(Transaction entity)

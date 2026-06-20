@@ -2,6 +2,7 @@ import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +12,11 @@ void main() async{
   // Ensure Flutter engine is ready before we do networking
   WidgetsFlutterBinding.ensureInitialized();
 
+  await dotenv.load(fileName: ".env");
+
   await Supabase.initialize(
-    url: 'https://kthgwdyeiiqfeixqkoai.supabase.co',
-    anonKey: '***REMOVED***',
+    url: dotenv.env["SUPABASE_URL"]!,
+    publishableKey: dotenv.env["SUPABASE_ANON_KEY"],
   );
   
   final db = AppDatabase.instance;

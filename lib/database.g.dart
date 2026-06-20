@@ -2878,7 +2878,7 @@ final class $$CategoriesTableReferences
   static MultiTypedResultKey<$TemplatesTable, List<Template>>
   _templatesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.templates,
-    aliasName: $_aliasNameGenerator(db.categories.id, db.templates.categoryId),
+    aliasName: 'categories__id__templates__category_id',
   );
 
   $$TemplatesTableProcessedTableManager get templatesRefs {
@@ -2896,10 +2896,7 @@ final class $$CategoriesTableReferences
   static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.transactions,
-    aliasName: $_aliasNameGenerator(
-      db.categories.id,
-      db.transactions.categoryId,
-    ),
+    aliasName: 'categories__id__transactions__category_id',
   );
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
@@ -3356,9 +3353,7 @@ final class $$TemplatesTableReferences
   $$TemplatesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias(
-        $_aliasNameGenerator(db.templates.categoryId, db.categories.id),
-      );
+      db.categories.createAlias('templates__category_id__categories__id');
 
   $$CategoriesTableProcessedTableManager get categoryId {
     final $_column = $_itemColumn<String>('category_id')!;
@@ -3377,10 +3372,7 @@ final class $$TemplatesTableReferences
   static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.transactions,
-    aliasName: $_aliasNameGenerator(
-      db.templates.id,
-      db.transactions.templateId,
-    ),
+    aliasName: 'templates__id__transactions__template_id',
   );
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
@@ -3886,9 +3878,7 @@ final class $$TransactionsTableReferences
   $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias(
-        $_aliasNameGenerator(db.transactions.categoryId, db.categories.id),
-      );
+      db.categories.createAlias('transactions__category_id__categories__id');
 
   $$CategoriesTableProcessedTableManager get categoryId {
     final $_column = $_itemColumn<String>('category_id')!;
@@ -3905,9 +3895,7 @@ final class $$TransactionsTableReferences
   }
 
   static $TemplatesTable _templateIdTable(_$AppDatabase db) =>
-      db.templates.createAlias(
-        $_aliasNameGenerator(db.transactions.templateId, db.templates.id),
-      );
+      db.templates.createAlias('transactions__template_id__templates__id');
 
   $$TemplatesTableProcessedTableManager? get templateId {
     final $_column = $_itemColumn<String>('template_id');

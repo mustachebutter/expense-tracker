@@ -1,5 +1,9 @@
+import 'dart:io';
+import 'package:win32_registry/win32_registry.dart';
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/screens/auth_gate.dart';
 import 'package:expense_tracker/sync_engine.dart';
+import 'package:expense_tracker/theme_state.dart';
 import 'package:flutter/material.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -11,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 void main() async{
   // Ensure Flutter engine is ready before we do networking
   WidgetsFlutterBinding.ensureInitialized();
+  registerWindowsProtocol();
 
   await dotenv.load(fileName: ".env");
 
@@ -21,9 +26,39 @@ void main() async{
   
   final db = AppDatabase.instance;
   SyncEngine.initialize(db);
-  await signInTestUser();
+  // await signInTestUser();
   runApp(TransactionApp());
 }
+
+void registerWindowsProtocol()
+{
+  if (Platform.isWindows)
+  {
+    try
+    {
+      print("🪟 Attempting to write to Windows Registry...");
+      
+
+      final executablePath = Platform.resolvedExecutable;
+      print("📍 Executable path: $executablePath");
+      const scheme = 'com.butters.expense_tracker';
+
+      final key = CURRENT_USER.create("Software\\Classes\\$scheme");
+      key.setValue("URL Protocol", const RegistryValue.string(""));
+      
+      final commandKey = key.create("shell\\open\\command");
+      commandKey.setValue("", RegistryValue.string('"$executablePath" "%1"'));
+
+      commandKey.close();
+      key.close();
+    }
+    catch (e)
+    {
+      print("❌ Registry Injection Failed: $e");
+    }
+  }
+}
+
 
 Future<void> signInTestUser() async {
   final supabase = Supabase.instance.client;
@@ -75,17 +110,10 @@ class AppConstants {
 
   static const Color primaryBlue = Color(0xFF0D47A1);
 }
-class TransactionApp extends StatefulWidget {
-  const TransactionApp({super.key});
 
-  @override
-  State<TransactionApp> createState() => TransactionAppState();
-}
 
-class TransactionAppState extends State<TransactionApp> {
-  ThemeMode _currentMode = ThemeMode.dark;
-  // ElevatedButton
-
+class TransactionApp extends StatelessWidget {
+  TransactionApp({super.key});
 
   final ThemeData lightTheme = ThemeData(
     textTheme: GoogleFonts.publicSansTextTheme(
@@ -249,25 +277,20 @@ class TransactionAppState extends State<TransactionApp> {
     )
   );
 
-  void _toggleTheme() {
-    setState(() {
-      _currentMode = _currentMode == ThemeMode.light
-        ? ThemeMode.dark
-        : ThemeMode.light;
-    });
-  }
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Transaction Tracker App',
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: _currentMode,
-      home: Dashboard(
-        onThemeToggle: _toggleTheme,
-      ),
-      );
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, currentMode, child)
+      {
+        return MaterialApp(
+          title: 'Transaction Tracker App',
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: currentMode,
+          home: AuthGate(),
+        );
+      },
+    );
   }
 }

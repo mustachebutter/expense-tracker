@@ -5,6 +5,7 @@ import 'package:expense_tracker/extensions/number.dart';
 import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/screens/settings.dart';
 import 'package:expense_tracker/sync_engine.dart';
+import 'package:expense_tracker/theme_state.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/ledger_list.dart';
 import 'package:expense_tracker/widgets/stream_ledger_list.dart';
@@ -12,11 +13,10 @@ import 'package:expense_tracker/widgets/summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import "package:drift/drift.dart" as drift;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Dashboard extends StatefulWidget {
-  final VoidCallback onThemeToggle;
-  
-  const Dashboard({super.key, required this.onThemeToggle});
+class Dashboard extends StatefulWidget {  
+  const Dashboard({super.key});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -188,7 +188,19 @@ class _DashboardState extends State<Dashboard> {
           ),
           IconButton(
             icon: Icon(Icons.dark_mode),
-            onPressed: widget.onThemeToggle,
+            onPressed: ()
+            {
+              themeNotifier.value = themeNotifier.value == ThemeMode.dark
+                ? ThemeMode.light
+                : ThemeMode.dark;
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.exit_to_app),
+            onPressed: () async
+            {
+              await Supabase.instance.client.auth.signOut();
+            },
           ),
         ],
       ),

@@ -41,7 +41,7 @@ void registerWindowsProtocol()
 
       final executablePath = Platform.resolvedExecutable;
       print("📍 Executable path: $executablePath");
-      const scheme = 'com.butters.expense_tracker';
+      const scheme = 'com.butters.expense-tracker';
 
       final key = CURRENT_USER.create("Software\\Classes\\$scheme");
       key.setValue("URL Protocol", const RegistryValue.string(""));

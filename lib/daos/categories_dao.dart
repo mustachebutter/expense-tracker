@@ -44,6 +44,17 @@ class CategoriesDao extends BaseDao<Categories, Category> with _$CategoriesDaoMi
     ).watch();
   }
 
+  Stream<List<Category>> watchAllActiveCategoriesForUser(String userId)
+  {
+    return (
+      select(categories)
+        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) => t.isActive.equals(true))
+        ..where((t) => t.userId.equals(userId))
+        ..orderBy([(t) => OrderingTerm.asc(t.name)])
+    ).watch();
+  }
+
   Future<List<Category>> getUnsynced()
   {
     return (select(categories)

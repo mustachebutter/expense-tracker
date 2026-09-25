@@ -33,14 +33,23 @@ class ReceiptFormDialog extends ConsumerStatefulWidget
 
 class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
 {
+  static const int _maxSplitPeople = 20;
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _merchantController;
   late final TextEditingController _totalController;
+  late final TextEditingController _shareController;
   DateTime? _date;
   String? _categoryId;
   late bool _isFavorite;
+  late int _quarterTurns;
   bool _addAsTransaction = false;
   bool _isScanning = false;
+
+  // Splitting the bill: equally between a number of people, or a share the user types
+  late bool _isSplit;
+  late bool _splitEqually;
+  late int _splitPeople;
 
   // NOTE: The receipt as it is now. Scanning changes it while the dialog is open, and saving
   // has to build on that copy (otherwise it would put the scan status back to "waiting")
@@ -55,9 +64,14 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _current = receipt;
     _merchantController = TextEditingController(text: receipt.merchant ?? "");
     _totalController = TextEditingController(text: receipt.total == null ? "" : amountText(receipt.total!));
+    _shareController = TextEditingController(text: receipt.splitAmount == null ? "" : amountText(receipt.splitAmount!));
     _date = receipt.date;
     _categoryId = receipt.categoryId;
     _isFavorite = receipt.isFavorite;
+    _quarterTurns = receipt.imageQuarterTurns;
+    _isSplit = receipt.isSplit;
+    _splitEqually = receipt.splitAmount == null;
+    _splitPeople = receipt.splitPeople ?? 2;
 
     // A new photo on a device that can read it: read it straight away
     if (receipt.scanStatus == ReceiptScanStatus.waiting && ref.read(canScanHereProvider))
@@ -68,21 +82,50 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     }
   }
 
-  Future<void> _scan() async
+  @override
+  void dispose() {
+    _merchantController.dispose();
+    _totalController.dispose();
+    _shareController.dispose();
+    super.dispose();
+  }
+
+  // [replace]: the user asked for a fresh reading, so it overwrites the fields instead of
+  // only filling the empty ones
+  Future<void> _scan({bool replace = false}) async
   {
     setState(() => _isScanning = true);
-    final scanned = await ref.read(receiptScanServiceProvider).scan(_current);
+    // NOTE: Starts from the way the photo is shown now, including a rotation not saved yet
+    final scanned = await ref.read(receiptScanServiceProvider).scan(
+      _current.copyWith(imageQuarterTurns: _quarterTurns),
+      replaceExisting: replace,
+    );
     if (!mounted) return;
 
     setState(() {
       _isScanning = false;
       _current = scanned;
-      // Only fill what's still empty, the user may have started typing while it was reading
-      if (_merchantController.text.isEmpty && scanned.merchant != null) _merchantController.text = scanned.merchant!;
-      if (_totalController.text.isEmpty && scanned.total != null) _totalController.text = amountText(scanned.total!);
-      _date ??= scanned.date;
+      // The scanner may have turned the photo upright to read it
+      _quarterTurns = scanned.imageQuarterTurns;
+
+      void fill(TextEditingController controller, String? value)
+      {
+        if (value != null && (replace || controller.text.isEmpty)) controller.text = value;
+      }
+      fill(_merchantController, scanned.merchant);
+      fill(_totalController, scanned.total == null ? null : amountText(scanned.total!));
+      if (replace || _date == null) _date = scanned.date ?? _date;
       _categoryId ??= scanned.categoryId;
     });
+  }
+
+  // What the user pays with the split as it's set in the form right now
+  double? get _myShare
+  {
+    final total = double.tryParse(_totalController.text);
+    if (!_isSplit) return total;
+    if (!_splitEqually) return double.tryParse(_shareController.text);
+    return total == null ? null : (total / _splitPeople * 100).roundToDouble() / 100;
   }
 
   // The line under the photo that says whether the receipt has been read
@@ -99,7 +142,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
         children: [
           icon,
           Expanded(child: Text(text, style: style)),
-          if (buttonLabel != null) TextButton(onPressed: _scan, child: Text(buttonLabel)),
+          if (buttonLabel != null) TextButton(onPressed: () => _scan(replace: true), child: Text(buttonLabel)),
         ],
       );
     }
@@ -122,22 +165,20 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
           "You can also fill it in yourself.",
         ),
       ReceiptScanStatus.scanned =>
-        row(const Icon(Icons.auto_awesome_outlined), "Filled in from the photo. Check it looks right."),
+        row(
+          const Icon(Icons.auto_awesome_outlined),
+          "Filled in from the photo. Check it looks right.",
+          buttonLabel: canScanHere ? "Scan again" : null,
+        ),
       ReceiptScanStatus.failed =>
         row(
           const Icon(Icons.error_outline),
-          "Couldn't read this receipt. Fill it in yourself.",
+          "Couldn't read this receipt. Turn the photo upright with the rotate button and try again, "
+          "or fill it in yourself.",
           buttonLabel: canScanHere ? "Try again" : null,
         ),
       ReceiptScanStatus.notScanned => null,
     };
-  }
-
-  @override
-  void dispose() {
-    _merchantController.dispose();
-    _totalController.dispose();
-    super.dispose();
   }
 
   Future<void> _pickDate() async
@@ -162,6 +203,9 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       total: Value(double.tryParse(_totalController.text)),
       date: Value(_date),
       categoryId: Value(_categoryId),
+      imageQuarterTurns: _quarterTurns,
+      splitPeople: Value(_isSplit && _splitEqually ? _splitPeople : null),
+      splitAmount: Value(_isSplit && !_splitEqually ? double.tryParse(_shareController.text) : null),
     ));
 
     if (_isFavorite != _current.isFavorite)
@@ -189,12 +233,72 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     if (mounted) Navigator.pop(context, true);
   }
 
+  List<Widget> _splitFields()
+  {
+    return [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        secondary: const Icon(Icons.group_outlined),
+        title: const Text("Split with friends"),
+        value: _isSplit,
+        onChanged: (value) => setState(() => _isSplit = value),
+      ),
+      if (_isSplit) ...[
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: true, label: Text("Equally"), icon: Icon(Icons.balance)),
+            ButtonSegment(value: false, label: Text("My share"), icon: Icon(Icons.edit_outlined)),
+          ],
+          selected: {_splitEqually},
+          onSelectionChanged: (selection) => setState(() => _splitEqually = selection.single),
+        ),
+        if (_splitEqually)
+          Row(
+            children: [
+              const Expanded(child: Text("People, you included")),
+              IconButton(
+                tooltip: "One less person",
+                onPressed: _splitPeople > 2 ? () => setState(() => _splitPeople--) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text("$_splitPeople", key: const Key("split_people"), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              IconButton(
+                tooltip: "One more person",
+                onPressed: _splitPeople < _maxSplitPeople ? () => setState(() => _splitPeople++) : null,
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          )
+        else
+          TextFormField(
+            controller: _shareController,
+            decoration: const InputDecoration(labelText: "Your share", prefixText: "\$ "),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: amountInputFormatters,
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              final problem = positiveAmount(value);
+              if (problem != null) return problem;
+              final total = double.tryParse(_totalController.text);
+              if (total != null && double.parse(value!) > total) return "Can't be more than the total";
+              return null;
+            },
+          ),
+        Text(
+          _myShare == null ? "Enter the total to see your share" : "You pay \$${_myShare!.toStringAsFixed(2)}",
+          key: const Key("my_share"),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final categories = ref.watch(activeCategoriesProvider).value ?? [];
-    final Widget? scanStatus = _scanStatus(context);
     final String? selectedCategoryId = categories.any((c) => c.id == _categoryId) ? _categoryId : null;
+    final Widget? scanStatus = _scanStatus(context);
 
     return FormDialogScaffold(
       title: "Receipt",
@@ -206,9 +310,25 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
           borderRadius: BorderRadius.circular(8),
           child: SizedBox(
             height: 260,
-            child: InteractiveViewer(
-              maxScale: 5,
-              child: ReceiptImage(receiptId: widget.receipt.id, fit: BoxFit.contain),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                InteractiveViewer(
+                  maxScale: 5,
+                  child: ReceiptImage(receiptId: widget.receipt.id, fit: BoxFit.contain, quarterTurns: _quarterTurns),
+                ),
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  // NOTE: Dark translucent circle with a white icon, readable on any photo
+                  child: IconButton(
+                    tooltip: "Rotate photo",
+                    style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
+                    onPressed: () => setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
+                    icon: const Icon(Icons.rotate_right),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -226,6 +346,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
           decoration: const InputDecoration(labelText: "Total", prefixText: "\$ "),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: amountInputFormatters,
+          onChanged: (_) => setState(() {}),
           validator: (value) {
             if ((value ?? "").isEmpty) return _addAsTransaction ? "A transaction needs a total" : null;
             return positiveAmount(value);
@@ -262,6 +383,8 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
           onChanged: (categoryId) => setState(() => _categoryId = categoryId),
         ),
 
+        ..._splitFields(),
+
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           secondary: Icon(_isFavorite ? Icons.star : Icons.star_border),
@@ -271,16 +394,21 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
         ),
 
         if (_isAlreadyTransaction)
-          const ListTile(
+          ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.check_circle_outline),
-            title: Text("Added as a transaction"),
+            leading: const Icon(Icons.check_circle_outline),
+            title: const Text("Added as a transaction"),
+            subtitle: _isSplit ? const Text("Its amount follows your share") : null,
           )
         else
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text("Also add as a transaction"),
-            subtitle: const Text("Uses the shop, total, date and category above"),
+            subtitle: Text(
+              _isSplit
+                ? "Adds only your share, with the shop, date and category above"
+                : "Uses the shop, total, date and category above",
+            ),
             value: _addAsTransaction,
             onChanged: (value) => setState(() => _addAsTransaction = value ?? false),
           ),

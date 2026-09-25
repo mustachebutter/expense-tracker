@@ -16,6 +16,20 @@ export 'package:expense_tracker/providers/core_providers.dart' show receiptImage
 
 final receiptImagePickerProvider = Provider<ReceiptImagePicker>((ref) => ReceiptImagePicker());
 
+extension ReceiptSplit on Receipt
+{
+  bool get isSplit => splitPeople != null || splitAmount != null;
+
+  // What you paid yourself: the whole total, an equal part of it, or the amount you typed
+  double? get myShare
+  {
+    if (splitAmount != null) return splitAmount;
+    if (total == null) return null;
+    if (splitPeople != null && splitPeople! > 1) return (total! / splitPeople! * 100).roundToDouble() / 100;
+    return total;
+  }
+}
+
 // The folder the photos live in. Widgets need it to build each receipt's file path
 final receiptImageDirectoryProvider = FutureProvider<Directory>((ref) {
   return ref.watch(receiptImageStoreProvider).directory();
@@ -103,7 +117,25 @@ class ReceiptActions
 
     final saved = edited.copyWith(isSynced: false, updatedAt: nextUpdatedAt(edited.updatedAt));
     await _dao.updateRow(saved);
+    await _updateLinkedTransaction(saved);
     return saved;
+  }
+
+  // NOTE: Once a receipt is a transaction, the transaction's amount follows your share, so
+  // splitting the bill afterwards (or fixing the total) doesn't leave the budget wrong
+  Future<void> _updateLinkedTransaction(Receipt receipt) async
+  {
+    final share = receipt.myShare;
+    if (receipt.transactionId == null || share == null) return;
+
+    final transaction = await _db.transactionsDao.getTransactionById(receipt.transactionId!, receipt.userId);
+    if (transaction == null || transaction.isDeleted || transaction.amount == share) return;
+
+    await _db.transactionsDao.updateRow(transaction.copyWith(
+      amount: share,
+      isSynced: false,
+      updatedAt: nextUpdatedAt(transaction.updatedAt),
+    ));
   }
 
   // Pinning puts it on top of the pile. Where it lands is decided by the board until it's dragged
@@ -128,7 +160,8 @@ class ReceiptActions
   }
 
   // Turns the receipt into a transaction in its category, and links the two so it can't be
-  // added twice. The category decides income or expense, like the Add Transaction form
+  // added twice. The category decides income or expense, like the Add Transaction form.
+  // A split receipt only adds your share
   Future<void> addAsTransaction(Receipt receipt, Category category) async
   {
     if (receipt.transactionId != null) throw StateError("This receipt is already a transaction");
@@ -141,7 +174,7 @@ class ReceiptActions
       await _ref.read(transactionActionsProvider).add(TransactionsCompanion(
         id: Value(transactionId),
         name: Value(receipt.merchant ?? "Receipt"),
-        amount: Value(receipt.total!),
+        amount: Value(receipt.myShare!),
         date: Value(receipt.date ?? DateTime.now()),
         type: Value(category.type),
         categoryId: Value(category.id),

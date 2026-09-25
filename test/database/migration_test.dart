@@ -119,10 +119,13 @@ void main()
     addTearDown(() => folder.deleteSync(recursive: true));
     final file = File("${folder.path}/db.sqlite");
 
-    // A version 4 database: receipts without the image_uploaded column
+    // A version 4 database: receipts without the columns versions 5 and 6 added
     final oldDb = AppDatabase.forTesting(NativeDatabase(file));
     await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(userId: "user-a", merchant: const Value("Kept")));
-    await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN image_uploaded");
+    for (final column in ["image_uploaded", "image_quarter_turns", "split_people", "split_amount"])
+    {
+      await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN $column");
+    }
     await oldDb.customStatement("PRAGMA user_version = 4");
     await oldDb.close();
 
@@ -135,5 +138,31 @@ void main()
 
     final version = await db.customSelect("PRAGMA user_version").getSingle();
     expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  test("upgrading a version 5 database adds rotation and splitting to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      imageUploaded: const Value(true),
+    ));
+    for (final column in ["image_quarter_turns", "split_people", "split_amount"])
+    {
+      await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN $column");
+    }
+    await oldDb.customStatement("PRAGMA user_version = 5");
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.imageUploaded), ("Kept", true));
+    expect((receipt.imageQuarterTurns, receipt.splitPeople, receipt.splitAmount), (0, null, null));
   });
 }

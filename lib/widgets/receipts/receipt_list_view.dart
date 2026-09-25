@@ -122,7 +122,7 @@ class ReceiptCard extends StatelessWidget
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ReceiptImage(receiptId: receipt.id),
+                  ReceiptImage(receiptId: receipt.id, quarterTurns: receipt.imageQuarterTurns),
                   if (receipt.scanStatus == ReceiptScanStatus.waiting || receipt.scanStatus == ReceiptScanStatus.failed)
                     Positioned(
                       top: 6,
@@ -152,7 +152,10 @@ class ReceiptCard extends StatelessWidget
                   ),
                   Text(
                     [
-                      if (receipt.total != null) "\$${receipt.total!.toStringAsFixed(2)}",
+                      if (receipt.isSplit && receipt.myShare != null && receipt.total != null)
+                        "\$${receipt.myShare!.toStringAsFixed(2)} of \$${receipt.total!.toStringAsFixed(2)}"
+                      else if (receipt.total != null)
+                        "\$${receipt.total!.toStringAsFixed(2)}",
                       date == null ? "No date" : DateFormat("MMM d, yyyy").format(date),
                     ].join(" · "),
                     style: textTheme.bodySmall,

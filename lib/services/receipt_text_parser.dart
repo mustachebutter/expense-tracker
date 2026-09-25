@@ -199,6 +199,8 @@ class ReceiptTextParser
       final letters = RegExp(r"[A-Za-zÀ-ÿ]").allMatches(row).length;
       final digits = RegExp(r"\d").allMatches(row).length;
       if (letters < 3 || digits > letters || _notAName.hasMatch(row)) continue;
+      // NOTE: A line with a price on it ("TOTAL 5.00", "MILK 1.45") is never the shop's name
+      if (amountsIn(row).isNotEmpty || _totalWords.hasMatch(row)) continue;
 
       final name = row
         .replaceAll(RegExp(r"^[^A-Za-z0-9À-ÿ]+|[^A-Za-z0-9À-ÿ.!)']+$"), "")

@@ -216,6 +216,62 @@ void main()
     expect(engine.syncedUserIds, [userA]);
     expect((await reload(receipt.id)).merchant, "Tesco Express");
   });
+
+  group("sideways photos", () {
+    test("a sideways photo is read turned, and saved to show upright from then on", () async {
+      // The text only makes sense once the photo is turned three quarter turns
+      scanner = FakeReceiptScanner(rowsWhenTurned: {3: tescoReceipt});
+      final container = await createContainer();
+      final receipt = await waitingReceipt();
+
+      final scanned = await container.read(receiptScanServiceProvider).scan(receipt);
+
+      expect(scanned.merchant, "Tesco Express");
+      expect(scanned.imageQuarterTurns, 3);
+      expect(scanner.triedTurns, [0, 1, 3], reason: "as shown first, then sideways both ways, stopping once it reads");
+    });
+
+    test("an upright photo is only read once", () async {
+      final container = await createContainer();
+      final receipt = await waitingReceipt();
+
+      await container.read(receiptScanServiceProvider).scan(receipt);
+
+      expect(scanner.triedTurns, [0]);
+    });
+
+    test("starts from the rotation the user already set", () async {
+      scanner = FakeReceiptScanner(rowsWhenTurned: {2: tescoReceipt});
+      final container = await createContainer();
+      final receipt = await waitingReceipt();
+
+      final scanned = await container.read(receiptScanServiceProvider).scan(receipt.copyWith(imageQuarterTurns: 2));
+
+      expect(scanner.triedTurns, [2]);
+      expect(scanned.imageQuarterTurns, 2);
+    });
+
+    test("keeps the best partial reading when no way round is perfect", () async {
+      scanner = FakeReceiptScanner(rowsWhenTurned: {0: ["~~"], 1: ["TOTAL 5.00"], 3: ["~~"], 2: ["~~"]});
+      final container = await createContainer();
+      final receipt = await waitingReceipt();
+
+      final scanned = await container.read(receiptScanServiceProvider).scan(receipt);
+
+      expect(scanned.total, 5.00);
+      expect(scanned.imageQuarterTurns, 1);
+      expect(scanner.triedTurns, [0, 1, 3, 2], reason: "tried every way round looking for more");
+    });
+  });
+
+  test("scanning again replaces what an earlier reading filled in", () async {
+    final container = await createContainer();
+    final receipt = await waitingReceipt(merchant: "Wrong name", total: 1.00);
+
+    final rescanned = await container.read(receiptScanServiceProvider).scan(receipt, replaceExisting: true);
+
+    expect((rescanned.merchant, rescanned.total), ("Tesco Express", 3.06));
+  });
 }
 
 // Lets a test change the receipt at the exact moment the photo is being read
@@ -226,9 +282,9 @@ class _EditingScanner extends FakeReceiptScanner
   _EditingScanner({required this.onRead}) : super(rows: tescoReceipt);
 
   @override
-  Future<List<String>> readRows(File image) async
+  Future<List<String>> readRows(File image, {int quarterTurns = 0}) async
   {
     await onRead();
-    return super.readRows(image);
+    return super.readRows(image, quarterTurns: quarterTurns);
   }
 }

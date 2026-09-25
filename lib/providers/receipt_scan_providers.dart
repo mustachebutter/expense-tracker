@@ -36,24 +36,57 @@ class ReceiptScanService
 
   AppDatabase get _db => _ref.read(databaseProvider);
 
-  // Reads the receipt's photo and fills in whatever the user hasn't typed themselves.
-  // Returns the receipt as saved (scanned, or failed if nothing could be read)
-  Future<Receipt> scan(Receipt receipt) async
+  // How much of the receipt a reading found. The total matters most
+  static int _score(ParsedReceipt parsed)
   {
-    final userId = _ref.requireUserId();
-    final file = await _ref.read(receiptImageStoreProvider).fileFor(receipt.id);
+    return (parsed.total != null ? 2 : 0) + (parsed.merchant != null ? 1 : 0) + (parsed.date != null ? 1 : 0);
+  }
 
-    ParsedReceipt parsed;
+  // A shop and a total is enough to stop looking
+  static const int _goodEnough = 3;
+
+  Future<ParsedReceipt> _read(File file, int quarterTurns) async
+  {
     try
     {
-      final rows = await _ref.read(receiptScannerProvider).readRows(file);
-      parsed = ReceiptTextParser(dayFirst: _ref.read(receiptDatesDayFirstProvider)).parse(rows);
+      final rows = await _ref.read(receiptScannerProvider).readRows(file, quarterTurns: quarterTurns);
+      return ReceiptTextParser(dayFirst: _ref.read(receiptDatesDayFirstProvider)).parse(rows);
     }
     catch (e)
     {
-      print("❌ Couldn't scan receipt ${receipt.id}: $e");
-      parsed = const ParsedReceipt();
+      print("❌ Couldn't read the receipt photo (turned $quarterTurns): $e");
+      return const ParsedReceipt();
     }
+  }
+
+  // Reads the photo the way it's shown. If that finds no total, the photo is probably
+  // sideways or upside down, so try the other three ways round and keep the best reading
+  Future<({ParsedReceipt parsed, int quarterTurns})> _readBestWayUp(File file, int shownTurns) async
+  {
+    var best = (parsed: await _read(file, shownTurns), quarterTurns: shownTurns);
+
+    // NOTE: Sideways (1 and 3 turns) is far more common than upside down, so try those first
+    for (final extraTurns in const [1, 3, 2])
+    {
+      if (_score(best.parsed) >= _goodEnough) break;
+
+      final turns = (shownTurns + extraTurns) % 4;
+      final parsed = await _read(file, turns);
+      if (_score(parsed) > _score(best.parsed)) best = (parsed: parsed, quarterTurns: turns);
+    }
+    return best;
+  }
+
+  // Reads the receipt's photo and fills in whatever the user hasn't typed themselves, or
+  // with [replaceExisting] (the user asked to scan again), replaces what was there.
+  // Also turns the photo upright if it had to be turned to be read.
+  // Returns the receipt as saved (scanned, or failed if nothing could be read)
+  Future<Receipt> scan(Receipt receipt, {bool replaceExisting = false}) async
+  {
+    final userId = _ref.requireUserId();
+    final file = await _ref.read(receiptImageStoreProvider).fileFor(receipt.id);
+    final reading = await _readBestWayUp(file, receipt.imageQuarterTurns);
+    final parsed = reading.parsed;
 
     // NOTE: Scanning takes a moment, so start from the receipt as it is NOW. If the user
     // edited it (or deleted it) meanwhile, their changes win
@@ -63,15 +96,20 @@ class ReceiptScanService
     final actions = _ref.read(receiptActionsProvider);
     if (parsed.isEmpty) return actions.update(latest.copyWith(scanStatus: ReceiptScanStatus.failed));
 
-    final merchant = latest.merchant ?? parsed.merchant;
+    // Keep what's there, unless the user asked for a fresh reading (then keep it only where
+    // the new reading found nothing)
+    T? pick<T>(T? existing, T? found) => replaceExisting ? (found ?? existing) : (existing ?? found);
+
+    final merchant = pick(latest.merchant, parsed.merchant);
     final categoryId = latest.categoryId
       ?? (merchant == null ? null : await _db.receiptsDao.categoryUsedBefore(merchant, userId));
 
     return actions.update(latest.copyWith(
       merchant: Value(merchant),
-      total: Value(latest.total ?? parsed.total),
-      date: Value(latest.date ?? parsed.date),
+      total: Value(pick(latest.total, parsed.total)),
+      date: Value(pick(latest.date, parsed.date)),
       categoryId: Value(categoryId),
+      imageQuarterTurns: reading.quarterTurns,
       scanStatus: ReceiptScanStatus.scanned,
     ));
   }

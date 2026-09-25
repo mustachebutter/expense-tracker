@@ -152,6 +152,14 @@ class Receipts extends Table
   IntColumn get scanStatus => intEnum<ReceiptScanStatus>().withDefault(const Constant(0))();
   // True once the photo is in Supabase Storage. Other devices download it when they see this
   BoolColumn get imageUploaded => boolean().withDefault(const Constant(false))();
+  // Quarter turns clockwise (0-3) to show the photo upright. The photo file itself is never
+  // changed, so rotating syncs as a number instead of re-uploading the whole photo
+  IntColumn get imageQuarterTurns => integer().withDefault(const Constant(0))();
+
+  // Splitting the bill with friends. An equal split stores how many people (you included),
+  // a custom split stores your own amount. Both empty: you paid all of it
+  IntColumn get splitPeople => integer().nullable()();
+  RealColumn get splitAmount => real().nullable()();
 
   // Favourites are the receipts pinned on the board
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
@@ -206,8 +214,8 @@ class AppDatabase extends _$AppDatabase
 
   @override
   // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
-  // v5 adds receipts.image_uploaded
-  int get schemaVersion => 5;
+  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting
+  int get schemaVersion => 6;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -255,12 +263,21 @@ class AppDatabase extends _$AppDatabase
 
       if (from < 4)
       {
-        // NOTE: Created with today's columns, so a v3 database skips straight past v5 too
+        // NOTE: Created with today's columns, so a v3 database skips the receipt steps below
         await m.createTable(receipts);
       }
-      else if (from < 5)
+      else
       {
-        await m.addColumn(receipts, receipts.imageUploaded);
+        if (from < 5)
+        {
+          await m.addColumn(receipts, receipts.imageUploaded);
+        }
+        if (from < 6)
+        {
+          await m.addColumn(receipts, receipts.imageQuarterTurns);
+          await m.addColumn(receipts, receipts.splitPeople);
+          await m.addColumn(receipts, receipts.splitAmount);
+        }
       }
     },
   );

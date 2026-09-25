@@ -123,6 +123,11 @@ void main()
       expect(dayFirst.parse(["www.shop.com", "0412 345 678", "** KMART **", "TOTAL 9.00"]).merchant, "Kmart");
     });
 
+    test("never takes a line with a price or a total as the name", () {
+      expect(dayFirst.parse(["TOTAL 5.00"]).merchant, isNull);
+      expect(dayFirst.parse(["MILK 2L 1.45", "Balance due", "3.00"]).merchant, isNull);
+    });
+
     test("keeps names that aren't all capitals as they are", () {
       expect(dayFirst.parse(["McDonald's", "TOTAL 9.00"]).merchant, "McDonald's");
     });

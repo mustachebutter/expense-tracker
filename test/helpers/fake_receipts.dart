@@ -39,10 +39,13 @@ class FakeReceiptImagePicker implements ReceiptImagePicker
   @override
   final bool canUseCamera;
 
+  @override
+  final bool canScanDocuments;
+
   Uint8List? nextImage = Uint8List.fromList([1, 2, 3]);
   final List<ReceiptImageSource> requestedSources = [];
 
-  FakeReceiptImagePicker({this.canUseCamera = false});
+  FakeReceiptImagePicker({this.canUseCamera = false, this.canScanDocuments = false});
 
   @override
   Future<Uint8List?> pick(ReceiptImageSource source) async
@@ -84,23 +87,28 @@ Future<Receipt> insertReceipt(
   );
 }
 
-// Pretends to read [rows] off every photo (or to fail, if [failWith] is set)
+// Pretends to read [rows] off every photo (or to fail, if [failWith] is set).
+// [rowsWhenTurned] simulates a sideways photo: the text only makes sense turned that many times
 class FakeReceiptScanner implements ReceiptScanner
 {
   @override
   final bool isAvailable;
 
   List<String> rows;
+  Map<int, List<String>>? rowsWhenTurned;
   Object? failWith;
   final List<String> scannedPaths = [];
+  final List<int> triedTurns = [];
 
-  FakeReceiptScanner({this.isAvailable = true, this.rows = const []});
+  FakeReceiptScanner({this.isAvailable = true, this.rows = const [], this.rowsWhenTurned});
 
   @override
-  Future<List<String>> readRows(File image) async
+  Future<List<String>> readRows(File image, {int quarterTurns = 0}) async
   {
     scannedPaths.add(image.path);
+    triedTurns.add(quarterTurns);
     if (failWith != null) throw failWith!;
-    return rows;
+    if (rowsWhenTurned != null) return rowsWhenTurned![quarterTurns] ?? const ["~~ garbled ~~"];
+    return quarterTurns == 0 ? rows : const [];
   }
 }

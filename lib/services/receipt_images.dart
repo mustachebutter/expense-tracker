@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -54,7 +56,14 @@ class ReceiptImageStore
   }
 }
 
-enum ReceiptImageSource { camera, gallery }
+enum ReceiptImageSource
+{
+  // Google's document scanner (Android): finds the receipt's edges, crops away the
+  // background and straightens it
+  documentScanner,
+  camera,
+  gallery,
+}
 
 // Opens the camera or the photo/file picker and returns the chosen image's bytes
 class ReceiptImagePicker
@@ -63,9 +72,14 @@ class ReceiptImagePicker
   // file picker instead, so the app only offers "Import image" there
   bool get canUseCamera => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  // NOTE: ML Kit's document scanner only exists on Android (and needs Google Play services)
+  bool get canScanDocuments => !kIsWeb && Platform.isAndroid;
+
   // Null if the user cancelled
   Future<Uint8List?> pick(ReceiptImageSource source) async
   {
+    if (source == ReceiptImageSource.documentScanner) return _scanDocument();
+
     final image = await ImagePicker().pickImage(
       source: source == ReceiptImageSource.camera ? ImageSource.camera : ImageSource.gallery,
       // NOTE: Phone photos are often 4000px+. This is plenty to read a receipt and keeps
@@ -75,5 +89,29 @@ class ReceiptImagePicker
       imageQuality: 85,
     );
     return image?.readAsBytes();
+  }
+
+  Future<Uint8List?> _scanDocument() async
+  {
+    final scanner = DocumentScanner(
+      // One page, as a JPEG. Its screen also has a button to import from the gallery instead
+      options: DocumentScannerOptions(pageLimit: 1, mode: ScannerMode.full, isGalleryImport: true),
+    );
+    try
+    {
+      final result = await scanner.scanDocument();
+      final images = result.images ?? [];
+      return images.isEmpty ? null : File(images.first).readAsBytes();
+    }
+    on PlatformException catch (e)
+    {
+      // Backing out of the scanner arrives as an error, treat it like cancelling a picker
+      print("Document scanner closed: ${e.message}");
+      return null;
+    }
+    finally
+    {
+      await scanner.close();
+    }
   }
 }

@@ -3363,6 +3363,40 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _imageQuarterTurnsMeta = const VerificationMeta(
+    'imageQuarterTurns',
+  );
+  @override
+  late final GeneratedColumn<int> imageQuarterTurns = GeneratedColumn<int>(
+    'image_quarter_turns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _splitPeopleMeta = const VerificationMeta(
+    'splitPeople',
+  );
+  @override
+  late final GeneratedColumn<int> splitPeople = GeneratedColumn<int>(
+    'split_people',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _splitAmountMeta = const VerificationMeta(
+    'splitAmount',
+  );
+  @override
+  late final GeneratedColumn<double> splitAmount = GeneratedColumn<double>(
+    'split_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -3471,6 +3505,9 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     transactionId,
     scanStatus,
     imageUploaded,
+    imageQuarterTurns,
+    splitPeople,
+    splitAmount,
     isFavorite,
     boardX,
     boardY,
@@ -3542,6 +3579,33 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         imageUploaded.isAcceptableOrUnknown(
           data['image_uploaded']!,
           _imageUploadedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_quarter_turns')) {
+      context.handle(
+        _imageQuarterTurnsMeta,
+        imageQuarterTurns.isAcceptableOrUnknown(
+          data['image_quarter_turns']!,
+          _imageQuarterTurnsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('split_people')) {
+      context.handle(
+        _splitPeopleMeta,
+        splitPeople.isAcceptableOrUnknown(
+          data['split_people']!,
+          _splitPeopleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('split_amount')) {
+      context.handle(
+        _splitAmountMeta,
+        splitAmount.isAcceptableOrUnknown(
+          data['split_amount']!,
+          _splitAmountMeta,
         ),
       );
     }
@@ -3640,6 +3704,18 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.bool,
         data['${effectivePrefix}image_uploaded'],
       )!,
+      imageQuarterTurns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}image_quarter_turns'],
+      )!,
+      splitPeople: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}split_people'],
+      ),
+      splitAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}split_amount'],
+      ),
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -3694,6 +3770,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final String? transactionId;
   final ReceiptScanStatus scanStatus;
   final bool imageUploaded;
+  final int imageQuarterTurns;
+  final int? splitPeople;
+  final double? splitAmount;
   final bool isFavorite;
   final double? boardX;
   final double? boardY;
@@ -3712,6 +3791,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     this.transactionId,
     required this.scanStatus,
     required this.imageUploaded,
+    required this.imageQuarterTurns,
+    this.splitPeople,
+    this.splitAmount,
     required this.isFavorite,
     this.boardX,
     this.boardY,
@@ -3747,6 +3829,13 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       );
     }
     map['image_uploaded'] = Variable<bool>(imageUploaded);
+    map['image_quarter_turns'] = Variable<int>(imageQuarterTurns);
+    if (!nullToAbsent || splitPeople != null) {
+      map['split_people'] = Variable<int>(splitPeople);
+    }
+    if (!nullToAbsent || splitAmount != null) {
+      map['split_amount'] = Variable<double>(splitAmount);
+    }
     map['is_favorite'] = Variable<bool>(isFavorite);
     if (!nullToAbsent || boardX != null) {
       map['board_x'] = Variable<double>(boardX);
@@ -3781,6 +3870,13 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           : Value(transactionId),
       scanStatus: Value(scanStatus),
       imageUploaded: Value(imageUploaded),
+      imageQuarterTurns: Value(imageQuarterTurns),
+      splitPeople: splitPeople == null && nullToAbsent
+          ? const Value.absent()
+          : Value(splitPeople),
+      splitAmount: splitAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(splitAmount),
       isFavorite: Value(isFavorite),
       boardX: boardX == null && nullToAbsent
           ? const Value.absent()
@@ -3813,6 +3909,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
         serializer.fromJson<int>(json['scanStatus']),
       ),
       imageUploaded: serializer.fromJson<bool>(json['imageUploaded']),
+      imageQuarterTurns: serializer.fromJson<int>(json['imageQuarterTurns']),
+      splitPeople: serializer.fromJson<int?>(json['splitPeople']),
+      splitAmount: serializer.fromJson<double?>(json['splitAmount']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       boardX: serializer.fromJson<double?>(json['boardX']),
       boardY: serializer.fromJson<double?>(json['boardY']),
@@ -3838,6 +3937,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
         $ReceiptsTable.$converterscanStatus.toJson(scanStatus),
       ),
       'imageUploaded': serializer.toJson<bool>(imageUploaded),
+      'imageQuarterTurns': serializer.toJson<int>(imageQuarterTurns),
+      'splitPeople': serializer.toJson<int?>(splitPeople),
+      'splitAmount': serializer.toJson<double?>(splitAmount),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'boardX': serializer.toJson<double?>(boardX),
       'boardY': serializer.toJson<double?>(boardY),
@@ -3859,6 +3961,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     Value<String?> transactionId = const Value.absent(),
     ReceiptScanStatus? scanStatus,
     bool? imageUploaded,
+    int? imageQuarterTurns,
+    Value<int?> splitPeople = const Value.absent(),
+    Value<double?> splitAmount = const Value.absent(),
     bool? isFavorite,
     Value<double?> boardX = const Value.absent(),
     Value<double?> boardY = const Value.absent(),
@@ -3879,6 +3984,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
         : this.transactionId,
     scanStatus: scanStatus ?? this.scanStatus,
     imageUploaded: imageUploaded ?? this.imageUploaded,
+    imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+    splitPeople: splitPeople.present ? splitPeople.value : this.splitPeople,
+    splitAmount: splitAmount.present ? splitAmount.value : this.splitAmount,
     isFavorite: isFavorite ?? this.isFavorite,
     boardX: boardX.present ? boardX.value : this.boardX,
     boardY: boardY.present ? boardY.value : this.boardY,
@@ -3907,6 +4015,15 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       imageUploaded: data.imageUploaded.present
           ? data.imageUploaded.value
           : this.imageUploaded,
+      imageQuarterTurns: data.imageQuarterTurns.present
+          ? data.imageQuarterTurns.value
+          : this.imageQuarterTurns,
+      splitPeople: data.splitPeople.present
+          ? data.splitPeople.value
+          : this.splitPeople,
+      splitAmount: data.splitAmount.present
+          ? data.splitAmount.value
+          : this.splitAmount,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -3932,6 +4049,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
           ..write('imageUploaded: $imageUploaded, ')
+          ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('splitPeople: $splitPeople, ')
+          ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -3955,6 +4075,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     transactionId,
     scanStatus,
     imageUploaded,
+    imageQuarterTurns,
+    splitPeople,
+    splitAmount,
     isFavorite,
     boardX,
     boardY,
@@ -3977,6 +4100,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.transactionId == this.transactionId &&
           other.scanStatus == this.scanStatus &&
           other.imageUploaded == this.imageUploaded &&
+          other.imageQuarterTurns == this.imageQuarterTurns &&
+          other.splitPeople == this.splitPeople &&
+          other.splitAmount == this.splitAmount &&
           other.isFavorite == this.isFavorite &&
           other.boardX == this.boardX &&
           other.boardY == this.boardY &&
@@ -3997,6 +4123,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String?> transactionId;
   final Value<ReceiptScanStatus> scanStatus;
   final Value<bool> imageUploaded;
+  final Value<int> imageQuarterTurns;
+  final Value<int?> splitPeople;
+  final Value<double?> splitAmount;
   final Value<bool> isFavorite;
   final Value<double?> boardX;
   final Value<double?> boardY;
@@ -4016,6 +4145,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
     this.imageUploaded = const Value.absent(),
+    this.imageQuarterTurns = const Value.absent(),
+    this.splitPeople = const Value.absent(),
+    this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -4036,6 +4168,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
     this.imageUploaded = const Value.absent(),
+    this.imageQuarterTurns = const Value.absent(),
+    this.splitPeople = const Value.absent(),
+    this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -4056,6 +4191,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? transactionId,
     Expression<int>? scanStatus,
     Expression<bool>? imageUploaded,
+    Expression<int>? imageQuarterTurns,
+    Expression<int>? splitPeople,
+    Expression<double>? splitAmount,
     Expression<bool>? isFavorite,
     Expression<double>? boardX,
     Expression<double>? boardY,
@@ -4076,6 +4214,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (transactionId != null) 'transaction_id': transactionId,
       if (scanStatus != null) 'scan_status': scanStatus,
       if (imageUploaded != null) 'image_uploaded': imageUploaded,
+      if (imageQuarterTurns != null) 'image_quarter_turns': imageQuarterTurns,
+      if (splitPeople != null) 'split_people': splitPeople,
+      if (splitAmount != null) 'split_amount': splitAmount,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (boardX != null) 'board_x': boardX,
       if (boardY != null) 'board_y': boardY,
@@ -4098,6 +4239,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String?>? transactionId,
     Value<ReceiptScanStatus>? scanStatus,
     Value<bool>? imageUploaded,
+    Value<int>? imageQuarterTurns,
+    Value<int?>? splitPeople,
+    Value<double?>? splitAmount,
     Value<bool>? isFavorite,
     Value<double?>? boardX,
     Value<double?>? boardY,
@@ -4118,6 +4262,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       transactionId: transactionId ?? this.transactionId,
       scanStatus: scanStatus ?? this.scanStatus,
       imageUploaded: imageUploaded ?? this.imageUploaded,
+      imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+      splitPeople: splitPeople ?? this.splitPeople,
+      splitAmount: splitAmount ?? this.splitAmount,
       isFavorite: isFavorite ?? this.isFavorite,
       boardX: boardX ?? this.boardX,
       boardY: boardY ?? this.boardY,
@@ -4162,6 +4309,15 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     if (imageUploaded.present) {
       map['image_uploaded'] = Variable<bool>(imageUploaded.value);
     }
+    if (imageQuarterTurns.present) {
+      map['image_quarter_turns'] = Variable<int>(imageQuarterTurns.value);
+    }
+    if (splitPeople.present) {
+      map['split_people'] = Variable<int>(splitPeople.value);
+    }
+    if (splitAmount.present) {
+      map['split_amount'] = Variable<double>(splitAmount.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -4204,6 +4360,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
           ..write('imageUploaded: $imageUploaded, ')
+          ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('splitPeople: $splitPeople, ')
+          ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -6709,6 +6868,9 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
       Value<bool> imageUploaded,
+      Value<int> imageQuarterTurns,
+      Value<int?> splitPeople,
+      Value<double?> splitAmount,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6730,6 +6892,9 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
       Value<bool> imageUploaded,
+      Value<int> imageQuarterTurns,
+      Value<int?> splitPeople,
+      Value<double?> splitAmount,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6822,6 +6987,21 @@ class $$ReceiptsTableFilterComposer
 
   ColumnFilters<bool> get imageUploaded => $composableBuilder(
     column: $table.imageUploaded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6956,6 +7136,21 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -7078,6 +7273,21 @@ class $$ReceiptsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => column,
@@ -7188,6 +7398,9 @@ class $$ReceiptsTableTableManager
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
                 Value<bool> imageUploaded = const Value.absent(),
+                Value<int> imageQuarterTurns = const Value.absent(),
+                Value<int?> splitPeople = const Value.absent(),
+                Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7207,6 +7420,9 @@ class $$ReceiptsTableTableManager
                 transactionId: transactionId,
                 scanStatus: scanStatus,
                 imageUploaded: imageUploaded,
+                imageQuarterTurns: imageQuarterTurns,
+                splitPeople: splitPeople,
+                splitAmount: splitAmount,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,
@@ -7228,6 +7444,9 @@ class $$ReceiptsTableTableManager
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
                 Value<bool> imageUploaded = const Value.absent(),
+                Value<int> imageQuarterTurns = const Value.absent(),
+                Value<int?> splitPeople = const Value.absent(),
+                Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7247,6 +7466,9 @@ class $$ReceiptsTableTableManager
                 transactionId: transactionId,
                 scanStatus: scanStatus,
                 imageUploaded: imageUploaded,
+                imageQuarterTurns: imageQuarterTurns,
+                splitPeople: splitPeople,
+                splitAmount: splitAmount,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,

@@ -14,7 +14,7 @@ class ReceiptsScreen extends ConsumerWidget
   {
     final picker = ref.read(receiptImagePickerProvider);
 
-    // NOTE: On a phone, ask camera or gallery. Desktops can only import a file
+    // NOTE: On a phone, ask how. Desktops can only import a file
     final ReceiptImageSource? source = picker.canUseCamera
       ? await showModalBottomSheet<ReceiptImageSource>(
           context: context,
@@ -22,9 +22,16 @@ class ReceiptsScreen extends ConsumerWidget
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (picker.canScanDocuments)
+                  ListTile(
+                    leading: const Icon(Icons.document_scanner),
+                    title: const Text("Scan receipt"),
+                    subtitle: const Text("Crops out the background and straightens it"),
+                    onTap: () => Navigator.pop(sheetContext, ReceiptImageSource.documentScanner),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.photo_camera),
-                  title: const Text("Take a photo"),
+                  title: Text(picker.canScanDocuments ? "Take a plain photo" : "Take a photo"),
                   onTap: () => Navigator.pop(sheetContext, ReceiptImageSource.camera),
                 ),
                 ListTile(

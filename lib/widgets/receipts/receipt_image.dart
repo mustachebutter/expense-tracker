@@ -8,8 +8,10 @@ class ReceiptImage extends ConsumerWidget
 {
   final String receiptId;
   final BoxFit fit;
+  // Quarter turns clockwise to show the photo upright (the receipt's imageQuarterTurns)
+  final int quarterTurns;
 
-  const ReceiptImage({super.key, required this.receiptId, this.fit = BoxFit.cover});
+  const ReceiptImage({super.key, required this.receiptId, this.fit = BoxFit.cover, this.quarterTurns = 0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,12 +19,16 @@ class ReceiptImage extends ConsumerWidget
     final placeholder = _Placeholder(key: ValueKey("placeholder_$receiptId"));
     if (directory == null) return placeholder;
 
-    return Image.file(
-      ReceiptImageStore.fileIn(directory, receiptId),
-      fit: fit,
-      // NOTE: Decode a smaller copy for thumbnails instead of the full 2000px photo
-      cacheWidth: fit == BoxFit.cover ? 400 : null,
-      errorBuilder: (context, error, stackTrace) => placeholder,
+    // NOTE: Rotated for display only, the file on disk (and in the cloud) stays as it was taken
+    return RotatedBox(
+      quarterTurns: quarterTurns,
+      child: Image.file(
+        ReceiptImageStore.fileIn(directory, receiptId),
+        fit: fit,
+        // NOTE: Decode a smaller copy for thumbnails instead of the full 2000px photo
+        cacheWidth: fit == BoxFit.cover ? 400 : null,
+        errorBuilder: (context, error, stackTrace) => placeholder,
+      ),
     );
   }
 }

@@ -1,7 +1,12 @@
+import 'dart:typed_data';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/screens/receipts.dart';
 import 'package:expense_tracker/screens/settings.dart';
+import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_list_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,7 +94,7 @@ void main()
     await openReceipts(tester, scanner: scanner);
 
     await importReceipt(tester);
-    expect(find.text("Couldn't read this receipt. Fill it in yourself."), findsOneWidget);
+    expect(find.textContaining("Couldn't read this receipt"), findsOneWidget);
 
     scanner.rows = ["KMART", "TOTAL 9.00"];
     await tester.tap(find.text("Try again"));
@@ -109,5 +114,117 @@ void main()
     final selector = tester.widget<SegmentedButton<ReceiptScanMode>>(find.byType(SegmentedButton<ReceiptScanMode>));
     expect(selector.selected, {ReceiptScanMode.onDevice});
     expect(selector.segments.firstWhere((s) => s.value == ReceiptScanMode.selfHosted).enabled, isFalse);
+  });
+
+  group("receipt dialog", () {
+    Future<void> openReceipt(WidgetTester tester, String merchant, {FakeReceiptScanner? scanner}) async
+    {
+      await openReceipts(tester, scanner: scanner ?? FakeReceiptScanner(isAvailable: false));
+      await tester.tap(find.widgetWithText(ReceiptCard, merchant));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> save(WidgetTester tester) async
+    {
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("splitting equally shows your share and saves how many people", (tester) async {
+      await insertReceipt(db, merchant: "Pizza night", total: 60);
+      await openReceipt(tester, "Pizza night");
+
+      await tester.tap(find.text("Split with friends"));
+      await tester.pumpAndSettle();
+      expect(find.text("You pay \$30.00"), findsOneWidget, reason: "two people to start with");
+
+      await tester.tap(find.byTooltip("One more person"));
+      await tester.tap(find.byTooltip("One more person"));
+      await tester.pumpAndSettle();
+      expect(find.text("You pay \$15.00"), findsOneWidget);
+
+      await save(tester);
+
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect((saved.splitPeople, saved.splitAmount), (4, null));
+      expect(find.widgetWithText(ReceiptCard, "\$15.00 of \$60.00 · No date"), findsOneWidget);
+    });
+
+    testWidgets("a custom share can't be more than the total", (tester) async {
+      await insertReceipt(db, merchant: "Groceries", total: 40);
+      await openReceipt(tester, "Groceries");
+
+      await tester.tap(find.text("Split with friends"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("My share"));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, "Your share"), "55");
+      await save(tester);
+
+      expect(find.text("Can't be more than the total"), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextFormField, "Your share"), "12.50");
+      await tester.pumpAndSettle();
+      expect(find.text("You pay \$12.50"), findsOneWidget);
+      await save(tester);
+
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect((saved.splitPeople, saved.splitAmount), (null, 12.5));
+    });
+
+    testWidgets("turning split off again clears it", (tester) async {
+      final receipt = await insertReceipt(db, merchant: "Dinner", total: 50);
+      await db.receiptsDao.updateRow(receipt.copyWith(splitPeople: const Value(2)));
+      await openReceipt(tester, "Dinner");
+
+      await tester.tap(find.text("Split with friends"));
+      await save(tester);
+
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect(saved.isSplit, isFalse);
+    });
+
+    testWidgets("the rotate button turns the photo a quarter turn each tap", (tester) async {
+      await insertReceipt(db, merchant: "Sideways");
+      await openReceipt(tester, "Sideways");
+
+      await tester.tap(find.byTooltip("Rotate photo"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip("Rotate photo"));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect((await db.receiptsDao.getAll()).single.imageQuarterTurns, 2);
+    });
+
+    testWidgets("Scan again replaces what the earlier reading filled in", (tester) async {
+      final receipt = await insertReceipt(db, merchant: "Misread");
+      await db.receiptsDao.updateRow(receipt.copyWith(scanStatus: ReceiptScanStatus.scanned));
+      await photos.save(receipt.id, Uint8List.fromList([1]));
+      await openReceipt(tester, "Misread", scanner: FakeReceiptScanner(rows: ["KMART", "TOTAL 9.00"]));
+
+      await tester.tap(find.text("Scan again"));
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester, "Shop"), "Kmart");
+      expect(fieldText(tester, "Total"), "9.00");
+    });
+  });
+
+  testWidgets("on Android, adding offers the document scanner that crops out the background", (tester) async {
+    final picker = FakeReceiptImagePicker(canUseCamera: true, canScanDocuments: true);
+    await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos, receiptPicker: picker,
+      receiptScanner: FakeReceiptScanner(isAvailable: false));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Add receipt"));
+    await tester.pumpAndSettle();
+    expect(find.text("Crops out the background and straightens it"), findsOneWidget);
+    expect(find.text("Take a plain photo"), findsOneWidget);
+
+    await tester.tap(find.text("Scan receipt"));
+    await tester.pumpAndSettle();
+
+    expect(picker.requestedSources, [ReceiptImageSource.documentScanner]);
   });
 }

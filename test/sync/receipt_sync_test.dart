@@ -69,7 +69,14 @@ void main()
     final full = await insertReceipt(pcDb, merchant: "Full", total: 12.5, date: DateTime(2026, 9, 3), categoryId: food.id,
       isFavorite: true, boardX: 120, boardY: 340, boardZ: 7);
     final empty = await insertReceipt(pcDb);
-    await pcDb.receiptsDao.updateRow(full.copyWith(scanStatus: ReceiptScanStatus.scanned, transactionId: const Value("tx-1")));
+    await pcDb.receiptsDao.updateRow(full.copyWith(
+      scanStatus: ReceiptScanStatus.scanned,
+      transactionId: const Value("tx-1"),
+      imageQuarterTurns: 3,
+      splitPeople: const Value(4),
+    ));
+    final customSplit = await insertReceipt(pcDb, total: 20);
+    await pcDb.receiptsDao.updateRow(customSplit.copyWith(splitAmount: const Value(7.5)));
 
     await pc.runSync(userA);
     await phone.runSync(userA);
@@ -81,6 +88,8 @@ void main()
     );
     expect((fullOnPhone.isFavorite, fullOnPhone.boardX, fullOnPhone.boardY, fullOnPhone.boardZ), (true, 120.0, 340.0, 7));
     expect(fullOnPhone.scanStatus, ReceiptScanStatus.scanned);
+    expect((fullOnPhone.imageQuarterTurns, fullOnPhone.splitPeople, fullOnPhone.splitAmount), (3, 4, null));
+    expect((await getReceipt(phoneDb, customSplit.id)).splitAmount, 7.5);
     expect(fullOnPhone.createdAt, full.createdAt);
 
     final emptyOnPhone = await getReceipt(phoneDb, empty.id);

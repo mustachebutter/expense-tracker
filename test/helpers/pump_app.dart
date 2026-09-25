@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/sync_providers.dart';
 import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'fake_receipts.dart';
 import 'test_database.dart';
 
 // NOTE: Stands in for the real SyncEngine so these tests never call Supabase.
@@ -48,6 +50,8 @@ Future<void> pumpApp(
   bool isOnline = true,
   // Pass a stream instead of isOnline to go on/offline in the middle of a test
   Stream<bool>? connectivity,
+  FakeReceiptImageStore? receiptImages,
+  FakeReceiptImagePicker? receiptPicker,
   List<Override> extraOverrides = const [],
 }) async
 {
@@ -67,6 +71,8 @@ Future<void> pumpApp(
         authStateProvider.overrideWith((ref) => Stream.value(AuthState(authEvent, null))),
         syncEngineProvider.overrideWithValue(syncEngine ?? FakeSyncEngine()),
         connectivityProvider.overrideWith((ref) => connectivity ?? Stream.value(isOnline)),
+        receiptImageStoreProvider.overrideWithValue(receiptImages ?? FakeReceiptImageStore()),
+        receiptImagePickerProvider.overrideWithValue(receiptPicker ?? FakeReceiptImagePicker()),
         ...extraOverrides,
       ],
       child: MaterialApp(home: child),

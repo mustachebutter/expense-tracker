@@ -6,6 +6,7 @@ import 'package:expense_tracker/daos/transactions_dao.dart';
 import 'package:expense_tracker/daos/templates_dao.dart';
 import 'package:expense_tracker/daos/investments_dao.dart';
 import 'package:expense_tracker/daos/savings_goals_dao.dart';
+import 'package:expense_tracker/daos/receipts_dao.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -124,6 +125,49 @@ class Investments extends Table
   Set<Column> get primaryKey => {id};
 }
 
+enum ReceiptScanStatus
+{
+  // Nobody has tried to read it yet, fields are filled in by hand (the only state until OCR exists)
+  notScanned,
+  // Queued for the scanner (ML Kit on a phone, or the self-hosted model)
+  waiting,
+  scanned,
+  failed,
+}
+
+class Receipts extends Table
+{
+  TextColumn get id => text().clientDefault(() => const Uuid().v4())();
+  TextColumn get userId => text()();
+
+  // NOTE: No image path column. The photo is always saved as receipts/<id>.jpg (see
+  // ReceiptImageStore), because a file path only means something on the device that saved it
+  TextColumn get merchant => text().nullable()();
+  RealColumn get total => real().nullable()();
+  DateTimeColumn get date => dateTime().nullable()();
+  TextColumn get categoryId => text().nullable().references(Categories, #id)();
+  // Set once the receipt has been turned into a transaction, so it isn't added twice
+  TextColumn get transactionId => text().nullable().references(Transactions, #id)();
+  IntColumn get scanStatus => intEnum<ReceiptScanStatus>().withDefault(const Constant(0))();
+
+  // Favourites are the receipts pinned on the board
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  // Position on the board. Null until the receipt is pinned and placed for the first time
+  RealColumn get boardX => real().nullable()();
+  RealColumn get boardY => real().nullable()();
+  // Stacking order on the board, the highest is drawn on top
+  IntColumn get boardZ => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // NOTE: Remembers how far each table has been pulled from Supabase, so the next
 // sync only downloads rows that changed after that point
 class SyncCursors extends Table
@@ -139,8 +183,8 @@ class SyncCursors extends Table
 }
 
 @DriftDatabase(
-  tables: [Categories, Transactions, Templates, SavingsGoals, Investments, SyncCursors],
-  daos: [CategoriesDao, TransactionsDao, TemplatesDao, SavingsGoalsDao, InvestmentsDao]
+  tables: [Categories, Transactions, Templates, SavingsGoals, Investments, SyncCursors, Receipts],
+  daos: [CategoriesDao, TransactionsDao, TemplatesDao, SavingsGoalsDao, InvestmentsDao, ReceiptsDao]
 )
 class AppDatabase extends _$AppDatabase
 {
@@ -158,8 +202,8 @@ class AppDatabase extends _$AppDatabase
   }
 
   @override
-  // v3 changes no tables, it only runs _repairTransactionTypes once
-  int get schemaVersion => 3;
+  // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts
+  int get schemaVersion => 4;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -203,6 +247,11 @@ class AppDatabase extends _$AppDatabase
       if (from < 3)
       {
         await _repairTransactionTypes();
+      }
+
+      if (from < 4)
+      {
+        await m.createTable(receipts);
       }
     },
   );

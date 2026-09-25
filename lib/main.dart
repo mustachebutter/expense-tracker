@@ -206,6 +206,14 @@ class TransactionApp extends ConsumerWidget {
     ),
     // NOTE: This dropdownMenu is for the Material 3 new dropdown menu
     dropdownMenuTheme: DropdownMenuThemeData(),
+    // NOTE: Tabs color the selected tab with colorScheme.primary, which this theme uses as a
+    // background color (white), so the selected tab was white on white. Set them explicitly
+    tabBarTheme: TabBarThemeData(
+      labelColor: Colors.black,
+      unselectedLabelColor: Colors.black54,
+      indicatorColor: Colors.black,
+      dividerColor: Color(0xFFF0F0F0),
+    ),
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.black,
     ),
@@ -299,6 +307,13 @@ class TransactionApp extends ConsumerWidget {
     ),
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.white,
+    ),
+    // NOTE: Same reason as the light theme, primary is a dark background color here
+    tabBarTheme: TabBarThemeData(
+      labelColor: Colors.white,
+      unselectedLabelColor: Colors.white60,
+      indicatorColor: Colors.white,
+      dividerColor: Color(0xFF2A2A2A),
     ),
     // NOTE: Dark mode's selected segment used to get black text on a near-black background
     segmentedButtonTheme: SegmentedButtonThemeData(

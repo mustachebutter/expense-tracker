@@ -1,34 +1,29 @@
-import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:expense_tracker/screens/login.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AuthGate extends StatelessWidget
+class AuthGate extends ConsumerWidget
 {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
-        {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()),);
-        }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
 
-        final session = snapshot.data?.session;
+    if (authState.isLoading && !authState.hasValue)
+    {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()),);
+    }
 
-        if (session != null)
-        {
-          return Dashboard();
-        }
+    final userId = ref.watch(currentUserIdProvider);
 
-        return Login();
-      },
-    );
+    if (userId != null)
+    {
+      return const Dashboard();
+    }
+
+    return const Login();
   }
 }

@@ -1,34 +1,14 @@
 import 'package:drift/drift.dart' as drift;
-import 'package:expense_tracker/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'database.dart';
 
 class SyncEngine
 {
-  static SyncEngine? _instance;
-  
-  late final AppDatabase _db;
-  late final SupabaseClient _supabase;
+  final AppDatabase _db;
+  final SupabaseClient _supabase;
 
-  SyncEngine._internal(this._db)
-  {
-    _supabase = Supabase.instance.client;
-  }
-
-  static void initialize(AppDatabase db)
-  {
-    _instance ??= SyncEngine._internal(db);
-  }
-
-  static SyncEngine get instance 
-  {
-    if (_instance == null)
-    {
-      throw Exception("SyncEngine must be initialized before use! Call SyncEngine.initialize(db) in main().");
-    }
-
-    return _instance!;
-  }
+  // NOTE: Created by syncEngineProvider, read it with ref.read(syncEngineProvider)
+  SyncEngine(this._db, this._supabase);
 
   Future<void> _pushTable<T>({
     required String tableName,
@@ -69,6 +49,7 @@ class SyncEngine
 
   Future<void> _pullTable<T>({
     required String tableName,
+    required String userId,
     required Future<List<dynamic>> Function() getLocalUnsyncedItems,
     required Future<void> Function(List<Map<String, dynamic>>) saveLocally,
   }) async
@@ -76,7 +57,7 @@ class SyncEngine
     print("Pulling $tableName from Supabase...");
 
     try {
-      final serverRows = await _supabase.from(tableName).select();
+      final serverRows = await _supabase.from(tableName).select().eq("user_id", userId);
 
       if (serverRows.isEmpty) return;
 
@@ -98,12 +79,12 @@ class SyncEngine
     }  
   }
 
-  Future<void> pushAllDataToServer() async
+  Future<void> pushAllDataToServer(String userId) async
   {
     // Sync Categories
     await _pushTable<Category>(
       tableName: 'categories',
-      unsyncedItems: await _db.categoriesDao.getUnsynced(),
+      unsyncedItems: await _db.categoriesDao.getUnsynced(userId),
       markLocalAsSynced: (cat) => _db.categoriesDao.markAsSynced(cat),
       toSupabaseJson: (cat) => {
         'id': cat.id,
@@ -119,7 +100,7 @@ class SyncEngine
     // Sync Transactions
     await _pushTable<Transaction>(
       tableName: 'transactions',
-      unsyncedItems: await _db.transactionsDao.getUnsynced(),
+      unsyncedItems: await _db.transactionsDao.getUnsynced(userId),
       markLocalAsSynced: (exp) => _db.transactionsDao.markAsSynced(exp),
       toSupabaseJson: (exp) => {
         'id': exp.id,
@@ -136,7 +117,7 @@ class SyncEngine
 
     await _pushTable(
       tableName: 'templates',
-      unsyncedItems: await _db.templatesDao.getUnsynced(),
+      unsyncedItems: await _db.templatesDao.getUnsynced(userId),
       markLocalAsSynced: (entity) => _db.templatesDao.markAsSynced(entity),
       toSupabaseJson: (entity) => {
         'id': entity.id,
@@ -153,12 +134,13 @@ class SyncEngine
     );
   }
 
-  Future<void> pullAllDataFromServer() async 
+  Future<void> pullAllDataFromServer(String userId) async
   {
     // Pull Categories
     await _pullTable(
       tableName: 'categories',
-      getLocalUnsyncedItems: () => _db.categoriesDao.getUnsynced(),
+      userId: userId,
+      getLocalUnsyncedItems: () => _db.categoriesDao.getUnsynced(userId),
       saveLocally: (safeServerRows) async {
         final companions = safeServerRows.map((row) => CategoriesCompanion(
           id: drift.Value(row['id']),
@@ -179,7 +161,8 @@ class SyncEngine
     // Pull Transactions
     await _pullTable(
       tableName: 'transactions',
-      getLocalUnsyncedItems: () => _db.transactionsDao.getUnsynced(),
+      userId: userId,
+      getLocalUnsyncedItems: () => _db.transactionsDao.getUnsynced(userId),
       saveLocally: (safeServerRows) async {
         final companions = safeServerRows.map((row) => TransactionsCompanion(
           id: drift.Value(row['id']),
@@ -202,7 +185,8 @@ class SyncEngine
 
     await _pullTable(
       tableName: 'templates',
-      getLocalUnsyncedItems: () => _db.templatesDao.getUnsynced(),
+      userId: userId,
+      getLocalUnsyncedItems: () => _db.templatesDao.getUnsynced(userId),
       saveLocally: (safeServerRows) async {
         final companions = safeServerRows.map((row) => TemplatesCompanion(
           id: drift.Value(row["id"]),
@@ -222,17 +206,9 @@ class SyncEngine
     );    
   }
 
-  Future<void> syncAllTransactionsFromTemplates() async
+  Future<void> syncAllTransactionsFromTemplates(String userId) async
   {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-    if (currentUserId == null)
-    {
-      print("No user logged in! Skipping generation of transactions from templates");
-      return;
-    }
-
-    DateTime? earliestDate = await AppDatabase.instance.transactionsDao.getEarliestTransactionDate();
+    DateTime? earliestDate = await _db.transactionsDao.getEarliestTransactionDate(userId);
 
     final now = DateTime.now();
     earliestDate ??= now;
@@ -242,23 +218,23 @@ class SyncEngine
 
     while (!currentDate.isAfter(now))
     {
-      await AppDatabase.instance.transactionsDao.generateFixedTransactionsForMonth(currentDate.year, currentDate.month, currentUserId);
+      await _db.transactionsDao.generateFixedTransactionsForMonth(currentDate.year, currentDate.month, userId);
       
       currentDate = DateTime(currentDate.year, currentDate.month + 1, currentDate.day);
     }
 
   }
 
-  Future<void> runStartUpSync() async
+  Future<void> runStartUpSync(String userId) async
   {
     try
     {
       print("🔄 1. Pulling latest data from Supabase...");
-      await SyncEngine.instance.pullAllDataFromServer();
+      await pullAllDataFromServer(userId);
       print("⚙️ 2. Generating missing fixed expenses locally...");
-      await SyncEngine.instance.syncAllTransactionsFromTemplates();
+      await syncAllTransactionsFromTemplates(userId);
       print("☁️ 3. Pushing local changes (and new generations) to Supabase...");
-      await SyncEngine.instance.pushAllDataToServer();
+      await pushAllDataToServer(userId);
     }
     catch (e)
     {

@@ -46,6 +46,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   app_links: ^7.0.0
   win32_registry: ^3.0.3
+  flutter_riverpod: ^3.4.3
 
 dev_dependencies:
   flutter_test:

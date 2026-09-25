@@ -1,15 +1,12 @@
 import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:win32_registry/win32_registry.dart';
-import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/screens/auth_gate.dart';
-import 'package:expense_tracker/sync_engine.dart';
-import 'package:expense_tracker/theme_state.dart';
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async{
@@ -24,10 +21,12 @@ void main() async{
     publishableKey: dotenv.env["SUPABASE_ANON_KEY"],
   );
   
-  final db = AppDatabase.instance;
-  SyncEngine.initialize(db);
   // await signInTestUser();
-  runApp(TransactionApp());
+  runApp(
+    ProviderScope(
+      child: TransactionApp()
+    )
+  );
 }
 
 void registerWindowsProtocol()
@@ -84,9 +83,6 @@ class AppConstants {
   //NOTE: Private constructor prevents anyone from instantiating this class
   AppConstants._();
 
-  //DEBUG: Only for testing, will need to implement auth
-  static const String testUserId = "3a0388fb-3d7f-4f50-a955-5daa60648cb3";
-
   static const Map<String, IconData> _iconMap = {
     "attach_money": Icons.attach_money,
     "restaurant": Icons.restaurant,
@@ -112,7 +108,7 @@ class AppConstants {
 }
 
 
-class TransactionApp extends StatelessWidget {
+class TransactionApp extends ConsumerWidget {
   TransactionApp({super.key});
 
   final ThemeData lightTheme = ThemeData(
@@ -278,19 +274,13 @@ class TransactionApp extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeNotifier,
-      builder: (context, currentMode, child)
-      {
-        return MaterialApp(
-          title: 'Transaction Tracker App',
-          theme: lightTheme,
-          darkTheme: darkTheme,
-          themeMode: currentMode,
-          home: AuthGate(),
-        );
-      },
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp(
+      title: 'Transaction Tracker App',
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: ref.watch(themeModeProvider),
+      home: const AuthGate(),
     );
   }
 }

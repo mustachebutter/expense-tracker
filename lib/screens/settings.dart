@@ -1,34 +1,29 @@
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/main.dart';
-import 'package:expense_tracker/widgets/add_expense_dialog.dart';
-import 'package:expense_tracker/widgets/ledger_list.dart';
-import 'package:expense_tracker/widgets/panel.dart';
-import 'package:expense_tracker/widgets/stream_panel.dart';
-import 'package:expense_tracker/widgets/summary_card.dart';
+import 'package:expense_tracker/providers/category_providers.dart';
+import 'package:expense_tracker/providers/investment_providers.dart';
+import 'package:expense_tracker/providers/savings_goal_providers.dart';
+import 'package:expense_tracker/providers/template_providers.dart';
+import 'package:expense_tracker/widgets/async_panel.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Settings extends StatefulWidget {
+class Settings extends ConsumerWidget {
   const Settings({super.key});
 
   @override
-  State<Settings> createState() => _SettingsState();
-}
-
-class _SettingsState extends State<Settings> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final TextStyle titleTextStyle = screenWidth < 600
         ? TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
         : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final TextTheme textTheme = Theme.of(context).textTheme;
+    final categories = ref.watch(activeCategoriesProvider);
+    final savingsGoals = ref.watch(activeSavingsGoalsProvider);
+    final templates = ref.watch(activeTemplatesProvider);
+    final investments = ref.watch(activeInvestmentsProvider);
+
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -53,8 +48,8 @@ class _SettingsState extends State<Settings> {
               // Contents
               Column(
                 children: [
-                  StreamPanel<Category>(
-                    dataStream: AppDatabase.instance.categoriesDao.watchAllActiveCategories(),
+                  AsyncPanel<Category>(
+                    asyncData: categories,
                     elementItemBuilder: (context, item) {
                       return Container(
                         color: colorScheme.surface,
@@ -100,8 +95,8 @@ class _SettingsState extends State<Settings> {
 
                   SizedBox(height: 20),
 
-                  StreamPanel<SavingsGoal>(
-                    dataStream: AppDatabase.instance.savingsGoalsDao.watchAvailableSavingsGoals(),
+                  AsyncPanel<SavingsGoal>(
+                    asyncData: savingsGoals,
                     elementItemBuilder: (context, item) {
                       return Container(
                         color: colorScheme.surface,
@@ -152,8 +147,8 @@ class _SettingsState extends State<Settings> {
                   SizedBox(height: 20),
 
                   //TODO: Render income templates and expense templates here
-                  StreamPanel<Template>(
-                    dataStream: AppDatabase.instance.templatesDao.watchAllTemplates(),
+                  AsyncPanel<Template>(
+                    asyncData: templates,
                     elementItemBuilder: (context, item) {
                       return Container(
                         color: colorScheme.surface,
@@ -210,8 +205,8 @@ class _SettingsState extends State<Settings> {
 
                   SizedBox(height: 20),
 
-                  StreamPanel<Investment>(
-                    dataStream: AppDatabase.instance.investmentsDao.watchAvailableInvestments(),
+                  AsyncPanel<Investment>(
+                    asyncData: investments,
                     elementItemBuilder: (context, item) {
                       return Container(
                         color: colorScheme.surface,

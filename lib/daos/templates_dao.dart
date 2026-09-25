@@ -9,18 +9,35 @@ class TemplatesDao extends BaseDao<Templates, Template> with _$TemplatesDaoMixin
 {
   TemplatesDao(AppDatabase db) : super(db, db.templates);
 
-  Stream<List<Template>> watchAllTemplates()
+  Stream<List<Template>> watchTemplates(String userId)
   {
     return (
       select(templates)
-        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) => 
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false)
+        )
+    ).watch();
+  }
+  Stream<List<Template>> watchActiveTemplates(String userId)
+  {
+    return (
+      select(templates)
+        ..where((t) => 
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.isActive.equals(true)
+        )
     ).watch();
   }
 
-  Future<List<Template>> getUnsynced()
+  Future<List<Template>> getUnsynced(String userId)
   {
     return (select(templates)
-      ..where((t) => t.isSynced.equals(false))
+      ..where((t) => 
+        t.userId.equals(userId) &
+        t.isSynced.equals(false)
+      )
     ).get();
   }
 

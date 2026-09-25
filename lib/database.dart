@@ -119,6 +119,9 @@ class AppDatabase extends _$AppDatabase
 
   AppDatabase._internal() : super(_openConnection());
 
+  // NOTE: Tests pass an in-memory database here so they never touch the real db.sqlite
+  AppDatabase.forTesting(super.executor);
+
   static AppDatabase get instance
   {
     _instance ??= AppDatabase._internal();

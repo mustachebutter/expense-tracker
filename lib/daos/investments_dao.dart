@@ -9,26 +9,28 @@ class InvestmentsDao extends BaseDao<Investments, Investment> with _$Investments
 {
   InvestmentsDao(AppDatabase db) : super(db, db.investments);
 
-  Stream<List<Investment>> watchAvailableInvestments()
+  Stream<List<Investment>> watchActiveInvestments(String userId)
   {
     return (
       select(investments)
-        ..where((t) => t.isActive.equals(true))
-        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) =>
+          t.userId.equals(userId) & 
+          t.isActive.equals(true) &
+          t.isDeleted.equals(false)
+        )
         ..orderBy([(t) => OrderingTerm.asc(t.name)])
     ).watch();
   }
 
-  Future<List<Investment>> getUnsynced()
+  Future<List<Investment>> getUnsynced(String userId)
   {
     return (select(investments)
-      ..where((t) => t.isSynced.equals(false))
+      ..where((t) =>
+        t.userId.equals(userId) & 
+        t.isSynced.equals(false)
+      )
     ).get();
   }
 
-  Future<bool> markAsSynced(Investment entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

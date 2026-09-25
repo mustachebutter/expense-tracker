@@ -46,6 +46,8 @@ dependencies:
   flutter_dotenv: ^6.0.1
   app_links: ^7.0.0
   win32_registry: ^3.0.3
+  flutter_riverpod: ^3.4.3
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +61,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.33.0
   build_runner: ^2.15.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -102,3 +105,24 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# NOTE: To change the icon, edit tool/make_app_icon.py, then run from the repo root:
+#   python tool/make_app_icon.py
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"
+  android: true
+  adaptive_icon_background: "assets/icon/app_icon_background.png"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    background_color: "#0D2A6B"
+    theme_color: "#0D47A1"
+  # NOTE: The Windows .ico is written by tool/make_app_icon.py with every size in it,
+  # this package would replace it with a 256px-only one
+  windows:
+    generate: false
+  macos:
+    generate: true

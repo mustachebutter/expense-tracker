@@ -1,15 +1,12 @@
 import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:win32_registry/win32_registry.dart';
-import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/screens/auth_gate.dart';
-import 'package:expense_tracker/sync_engine.dart';
-import 'package:expense_tracker/theme_state.dart';
 import 'package:flutter/material.dart';
-import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async{
@@ -24,10 +21,12 @@ void main() async{
     publishableKey: dotenv.env["SUPABASE_ANON_KEY"],
   );
   
-  final db = AppDatabase.instance;
-  SyncEngine.initialize(db);
   // await signInTestUser();
-  runApp(TransactionApp());
+  runApp(
+    ProviderScope(
+      child: TransactionApp()
+    )
+  );
 }
 
 void registerWindowsProtocol()
@@ -84,9 +83,6 @@ class AppConstants {
   //NOTE: Private constructor prevents anyone from instantiating this class
   AppConstants._();
 
-  //DEBUG: Only for testing, will need to implement auth
-  static const String testUserId = "3a0388fb-3d7f-4f50-a955-5daa60648cb3";
-
   static const Map<String, IconData> _iconMap = {
     "attach_money": Icons.attach_money,
     "restaurant": Icons.restaurant,
@@ -97,6 +93,14 @@ class AppConstants {
     "health_cross": Symbols.health_cross,
     "more_horiz": Symbols.more_horiz,
   };
+
+  // Every icon a category can use, for the icon picker in the category form
+  static List<String> get iconKeys => _iconMap.keys.toList();
+
+  // Colors offered in the category form, stored on the category as a hex string
+  static const List<String> categoryColorHexes = [
+    "4CAF50", "2196F3", "F44336", "FF9800", "9C27B0", "009688", "795548", "607D8B",
+  ];
 
   static Icon getIcon(String key)
   {
@@ -112,7 +116,7 @@ class AppConstants {
 }
 
 
-class TransactionApp extends StatelessWidget {
+class TransactionApp extends ConsumerWidget {
   TransactionApp({super.key});
 
   final ThemeData lightTheme = ThemeData(
@@ -178,6 +182,15 @@ class TransactionApp extends StatelessWidget {
     dropdownMenuTheme: DropdownMenuThemeData(),
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.black,
+    ),
+    // NOTE: Same colors as the selected filter chips. Without this the selected segment
+    // uses colorScheme.onSecondaryContainer, which ColorScheme doesn't set to a readable color
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        foregroundColor: Colors.black,
+        selectedForegroundColor: Colors.white,
+        selectedBackgroundColor: Colors.black54,
+      ),
     ),
     chipTheme: ChipThemeData(
       selectedColor: Colors.black54,
@@ -260,6 +273,14 @@ class TransactionApp extends StatelessWidget {
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.white,
     ),
+    // NOTE: Dark mode's selected segment used to get black text on a near-black background
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        foregroundColor: Colors.white,
+        selectedForegroundColor: Colors.black,
+        selectedBackgroundColor: Colors.white54,
+      ),
+    ),
     chipTheme: ChipThemeData(
       selectedColor: Colors.white54,
       labelStyle: TextStyle(
@@ -278,19 +299,13 @@ class TransactionApp extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeNotifier,
-      builder: (context, currentMode, child)
-      {
-        return MaterialApp(
-          title: 'Transaction Tracker App',
-          theme: lightTheme,
-          darkTheme: darkTheme,
-          themeMode: currentMode,
-          home: AuthGate(),
-        );
-      },
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp(
+      title: 'Transaction Tracker App',
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: ref.watch(themeModeProvider),
+      home: const AuthGate(),
     );
   }
 }

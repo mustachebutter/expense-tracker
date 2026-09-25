@@ -1,57 +1,38 @@
-import 'package:drift/drift.dart' as drift;
-import 'package:expense_tracker/daos/transactions_dao.dart';
 import 'package:expense_tracker/database.dart';
-import 'package:expense_tracker/extensions/number.dart';
-import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/providers/category_providers.dart';
+import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/theme_provider.dart';
+import 'package:expense_tracker/providers/transaction_providers.dart';
 import 'package:expense_tracker/screens/settings.dart';
-import 'package:expense_tracker/sync_engine.dart';
-import 'package:expense_tracker/theme_state.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
-import 'package:expense_tracker/widgets/ledger_list.dart';
-import 'package:expense_tracker/widgets/stream_ledger_list.dart';
+import 'package:expense_tracker/widgets/monthly_ledger_list.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
+import 'package:expense_tracker/widgets/sync_status_button.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import "package:drift/drift.dart" as drift;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Dashboard extends StatefulWidget {  
+class Dashboard extends ConsumerStatefulWidget {
   const Dashboard({super.key});
 
   @override
-  State<Dashboard> createState() => _DashboardState();
+  ConsumerState<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends ConsumerState<Dashboard> {
   final DateTime _selectedMonth = DateTime.now();
   final DateTime _startMonth = DateTime(2026, 3);
   final DateTime _endMonth = DateTime.now();
-  
-  late Future<List<Category>> _categoriesFuture;
-
-  String _activeFilter = "All";
-    
-  void onFilterChanged (String newFilter) 
-  {
-    setState(() => _activeFilter = newFilter);
-  }
 
   int getMonthsBetween(DateTime startDt, DateTime endDt,) {
     return ((endDt.year - startDt.year) * 12) + (endDt.month - startDt.month);
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SyncEngine.instance.runStartUpSync();
-    });
-
-    _categoriesFuture = AppDatabase.instance.categoriesDao.getAllActiveCategories();
-  }
-  @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
+    final metricsAsync = ref.watch(dashboardMetricsProvider);
+    final categories = ref.watch(activeCategoriesProvider).value ?? [];
+    final activeFilter = ref.watch(activeFilterProvider);
     final TextStyle titleTextStyle = screenWidth < 600
       ? TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
       : TextStyle(fontSize: 32, fontWeight: FontWeight.bold);
@@ -81,13 +62,10 @@ class _DashboardState extends State<Dashboard> {
 
               const SizedBox(height: 30,),
 
-              StreamBuilder<DashboardMetrics>(
-                stream: AppDatabase.instance.transactionsDao.watchDashboardMetrics(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return CircularProgressIndicator();
-
-                  final metrics = snapshot.data!;
-
+              metricsAsync.when(
+                loading: () => const CircularProgressIndicator(),
+                error: (error, stackTrace) => Text("Failed to load metrics: $error"),
+                data: (metrics) {
                   return screenWidth < 600 
                     ? Column(
                         children: [
@@ -123,21 +101,18 @@ class _DashboardState extends State<Dashboard> {
                           child: AddTransactionDialog(
                             currentMonth: _selectedMonth,
                             onTransactionAdded: (TransactionsCompanion newlyCreatedTransaction) async {
-                              await AppDatabase.instance.transactionsDao.insertRow(newlyCreatedTransaction);
+                              await ref.read(transactionActionsProvider).add(newlyCreatedTransaction);
                             },
                           )
                         ),
                         const SizedBox(width: 30,),
                         
-                        FutureBuilder(
-                          future: _categoriesFuture,
-                          builder: (context, snapshot) {
-                            final categories = snapshot.data ?? [];
+                        Builder(
+                          builder: (context) {
                             final categoryNames = categories.map((c) => c.name).toList();
 
-                            final filters = ["All", ...categoryNames];
+                            final filters = [ActiveFilterNotifier.all, ...categoryNames];
 
-                            
                             return Expanded(
                               flex: 2,
                               child: Column(
@@ -148,13 +123,13 @@ class _DashboardState extends State<Dashboard> {
                                       spacing: 8,
                                       alignment: WrapAlignment.start,
                                       children: filters.map((filterName) {
-                                        bool isSelected = _activeFilter == filterName;
+                                        bool isSelected = activeFilter == filterName;
 
                                         return ChoiceChip(
                                           label: Text(filterName),
                                           selected: isSelected,
                                           onSelected: (bool userClickedIt) {
-                                            onFilterChanged(filterName);
+                                            ref.read(activeFilterProvider.notifier).select(filterName);
                                           },
                                         );
                                       }).toList(),
@@ -180,26 +155,25 @@ class _DashboardState extends State<Dashboard> {
       ),
       appBar: AppBar(
         actions: [
+          const SyncStatusButton(),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => Settings()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const Settings()));
             },
           ),
           IconButton(
             icon: Icon(Icons.dark_mode),
             onPressed: ()
             {
-              themeNotifier.value = themeNotifier.value == ThemeMode.dark
-                ? ThemeMode.light
-                : ThemeMode.dark;
+              ref.read(themeModeProvider.notifier).toggle();
             },
           ),
           IconButton(
             icon: Icon(Icons.exit_to_app),
             onPressed: () async
             {
-              await Supabase.instance.client.auth.signOut();
+              await ref.read(supabaseProvider).auth.signOut();
             },
           ),
         ],
@@ -227,7 +201,7 @@ class _DashboardState extends State<Dashboard> {
                         AddTransactionDialog(
                           currentMonth: _selectedMonth,
                           onTransactionAdded: (TransactionsCompanion newlyCreatedTransaction) async {
-                            await AppDatabase.instance.transactionsDao.insertRow(newlyCreatedTransaction);
+                            await ref.read(transactionActionsProvider).add(newlyCreatedTransaction);
 
                             // NOTE: This needs to be here as an exclusive for mobile
                             // on PC and web there won't be any modal to close! so it would errored out
@@ -255,23 +229,20 @@ class _DashboardState extends State<Dashboard> {
   Widget _populateLedgerLists()
   {
     DateTime currentMonth = DateTime(_endMonth.year, _endMonth.month, 1);
-    DateTime endMonth = DateTime(_startMonth.year, _startMonth.month, 1);
     List<Widget> lists = [];
     int counter = 0;
     while (!currentMonth.isBefore(_startMonth))
     {
       counter++;
       lists.add(
-        StreamLedgerList(
+        MonthlyLedgerList(
           year: currentMonth.year,
           month: currentMonth.month,
-          activeFilter: _activeFilter,
           onDelete: (String idToDelete) async {
-            final expense = await AppDatabase.instance.transactionsDao.getTransactionById(idToDelete);
+            final expense = await ref.read(transactionActionsProvider).softDeleteById(idToDelete);
 
             if (expense != null)
             {
-              await AppDatabase.instance.transactionsDao.softDelete(expense);
               if (context.mounted)
               {
                 ScaffoldMessenger.of(context).showSnackBar(

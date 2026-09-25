@@ -8,62 +8,62 @@ part 'categories_dao.g.dart';
 class CategoriesDao extends BaseDao<Categories, Category> with _$CategoriesDaoMixin
 {
   CategoriesDao(AppDatabase db) : super(db, db.categories);
-  Future<List<Category>> getAllCategories()
+  Future<List<Category>> getCategories(String userId)
   {
     return (
       select(categories)
-        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) => 
+          t.userId.equals(userId) & 
+          t.isDeleted.equals(false)
+        )
     ).get();
   }
 
-  Future<List<Category>> getAllActiveCategories()
+  Future<List<Category>> getActiveCategories(String userId)
   {
     return (
       select(categories)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) => t.isActive.equals(true))
+        ..where((t) => 
+          t.userId.equals(userId) & 
+          t.isDeleted.equals(false) & 
+          t.isActive.equals(true)
+        )
     ).get();
   }
 
-  Stream<List<Category>> watchAllCategories()
+  Stream<List<Category>> watchCategories(String userId)
   {
     return (
       select(categories)
-        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) => 
+          t.userId.equals(userId) & 
+          t.isDeleted.equals(false)
+        )
         ..orderBy([(t) => OrderingTerm.asc(t.name)])
     ).watch();
   }
 
-  Stream<List<Category>> watchAllActiveCategories()
+  Stream<List<Category>> watchActiveCategories(String userId)
   {
     return (
       select(categories)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) => t.isActive.equals(true))
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.isActive.equals(true)
+        )
         ..orderBy([(t) => OrderingTerm.asc(t.name)])
     ).watch();
   }
 
-  Stream<List<Category>> watchAllActiveCategoriesForUser(String userId)
-  {
-    return (
-      select(categories)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) => t.isActive.equals(true))
-        ..where((t) => t.userId.equals(userId))
-        ..orderBy([(t) => OrderingTerm.asc(t.name)])
-    ).watch();
-  }
-
-  Future<List<Category>> getUnsynced()
+  Future<List<Category>> getUnsynced(String userId)
   {
     return (select(categories)
-      ..where((t) => t.isSynced.equals(false))
+      ..where((t) => 
+        t.userId.equals(userId) & 
+        t.isSynced.equals(false)
+      )
     ).get();
   }
 
-  Future<bool> markAsSynced(Category entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 }

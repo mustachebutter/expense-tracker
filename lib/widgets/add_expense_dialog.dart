@@ -1,10 +1,12 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/providers/category_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AddTransactionDialog extends StatefulWidget
+class AddTransactionDialog extends ConsumerStatefulWidget
 {
   final Function(TransactionsCompanion) onTransactionAdded;
   final DateTime currentMonth;
@@ -12,10 +14,10 @@ class AddTransactionDialog extends StatefulWidget
   const AddTransactionDialog({super.key, required this.onTransactionAdded, required this.currentMonth});
 
   @override
-  State<AddTransactionDialog> createState() => _AddTransactionDialogState();
+  ConsumerState<AddTransactionDialog> createState() => _AddTransactionDialogState();
 }
 
-class _AddTransactionDialogState extends State<AddTransactionDialog>
+class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog>
 {
   String _name = "";
   double _amount = 0.0;
@@ -25,6 +27,8 @@ class _AddTransactionDialogState extends State<AddTransactionDialog>
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final categoriesAsync = ref.watch(activeCategoriesProvider);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -59,14 +63,10 @@ class _AddTransactionDialogState extends State<AddTransactionDialog>
           
           const SizedBox(height: 15,),
 
-          StreamBuilder<List<Category>>(
-            stream: AppDatabase.instance.categoriesDao.watchAllActiveCategories(),
-            builder: (context, snapshot) {
-
-              if (!snapshot.hasData) return const CircularProgressIndicator();
-              
-              final categories = snapshot.data ?? [];
-              
+          categoriesAsync.when(
+            loading: () => const CircularProgressIndicator(),
+            error: (error, stackTrace) => Text("Failed to load categories: $error"),
+            data: (categories) {
               if (categories.isEmpty) return Text("Please add categories in the settings!");
 
               final firstCategoryId = categories.first.id;
@@ -115,13 +115,20 @@ class _AddTransactionDialogState extends State<AddTransactionDialog>
                       onPressed: () {
                         if (_name.isEmpty || _amount == 0) return;
 
+                        // NOTE: The category decides if this is money in or out, e.g. a
+                        // "Salary" category is income. This used to always save an expense
+                        final category = categories.firstWhere(
+                          (c) => c.id == _selectedTag,
+                          // Nothing picked yet, or the picked category was deleted meanwhile
+                          orElse: () => categories.first,
+                        );
+
                         final newTransaction = TransactionsCompanion(
                           name: drift.Value(_name),
                           amount: drift.Value(_amount),
                           date: drift.Value(DateTime.now()),
-                          type: drift.Value(TransactionType.expense),
-                          categoryId: drift.Value(_selectedTag ?? firstCategoryId),
-                          userId: drift.Value(AppConstants.testUserId), // TODO: Test only
+                          type: drift.Value(category.type),
+                          categoryId: drift.Value(category.id),
                           isSynced: drift.Value(false),
                         );
 

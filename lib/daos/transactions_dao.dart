@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/daos/base_dao.dart';
 import 'package:expense_tracker/database.dart';
+import 'package:uuid/uuid.dart';
 
 part 'transactions_dao.g.dart';
 
@@ -15,6 +16,16 @@ class TransactionWithCategory
   });
 }
 
+// NOTE: A fixed transaction's id is derived from its template and month instead of being random.
+// Two offline devices generating "Rent, March 2026" then produce the SAME id, so after
+// syncing it's one row instead of a duplicate
+const String _fixedTransactionNamespace = "6f1c9a52-3d0b-4e57-9d6e-2b1f8c4a7e10";
+
+String fixedTransactionId(String templateId, int year, int month)
+{
+  return const Uuid().v5(_fixedTransactionNamespace, "$templateId:$year-$month");
+}
+
 typedef DashboardMetrics = ({ double income, double expense, double cashFlow });
 
 @DriftAccessor(tables: [Transactions, Categories, Templates])
@@ -22,28 +33,34 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
 {
   TransactionsDao(AppDatabase db) : super(db, db.transactions);
 
-  Future<Transaction?> getTransactionById (String id)
+  Future<Transaction?> getTransactionById (String id, String userId)
   {
     return (
       select(transactions)
-        ..where((t) => t.id.equals(id))
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.id.equals(id)
+        )
     ).getSingleOrNull();
   }
 
-  Future<DateTime?> getEarliestTransactionDate() async
+  Future<DateTime?> getEarliestTransactionDate(String userId) async
   {
     final earliestDate = transactions.date.min();
 
     final query = selectOnly(transactions)
       ..addColumns([earliestDate])
-      ..where(transactions.isDeleted.equals(false));
+      ..where(
+        transactions.userId.equals(userId) &
+        transactions.isDeleted.equals(false)
+      );
     
     final row = await query.getSingleOrNull();
 
     return row?.read(earliestDate);
   }
 
-  Stream<DashboardMetrics> watchDashboardMetrics()
+  Stream<DashboardMetrics> watchDashboardMetrics(String userId)
   {
     final incomeSum = transactions.amount.sum(
       filter: transactions.type.equalsValue(TransactionType.income)
@@ -55,7 +72,10 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
 
     final query = selectOnly(transactions)
       ..addColumns([incomeSum, expenseSum])
-      ..where(transactions.isDeleted.equals(false));
+      ..where(
+        transactions.userId.equals(userId) &
+        transactions.isDeleted.equals(false)
+      );
 
     return query.watchSingle().map((row) {
       final income = row.read(incomeSum) ?? 0.0;
@@ -71,23 +91,36 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     final softDeletedTransaction = entity.copyWith(
       isDeleted: true,
       isSynced: false,
+      updatedAt: nextUpdatedAt(entity.updatedAt),
     );
 
     return updateRow(softDeletedTransaction);
   }
 
-  Future<void> generateFixedTransactionsForMonth(int targetYear, int targetMonth, String currentUserId) async
+  Future<void> generateFixedTransactionsForMonth(int targetYear, int targetMonth, String userId) async
   {
-    final allTemplates = await select(templates).get();
+    final allTemplates = await (
+      select(templates)
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.isActive.equals(true)
+        )
+    ).get();
     print(allTemplates);
     if (allTemplates.isEmpty) return;
 
     final startOfMonth = DateTime(targetYear, targetMonth, 1);
-    final endOfMonth = DateTime(targetYear, targetMonth + 1, 23, 59, 59);
+    // NOTE: Day 0 of next month is the last day of this month (Dart rolls it back),
+    // so endOfMonth.day is also the number of days in this month
+    final endOfMonth = DateTime(targetYear, targetMonth + 1, 0, 23, 59, 59);
 
     final alreadyGeneratedQuery = select(transactions)
-      ..where((t) => t.templateId.isNotNull())
-      ..where((t) => t.date.isBetweenValues(startOfMonth, endOfMonth));
+      ..where((t) =>
+        t.userId.equals(userId) &
+        t.templateId.isNotNull() &
+        t.date.isBetweenValues(startOfMonth, endOfMonth)
+      );
 
     final alreadyGeneratedRows = await alreadyGeneratedQuery.get();
 
@@ -132,48 +165,59 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
         final chargeDate = _getChargeDate(template.billingDay);
 
         return TransactionsCompanion.insert(
+          id: Value(fixedTransactionId(template.id, targetYear, targetMonth)),
           name: template.name,
           amount: template.amount,
           date: chargeDate,
           type: template.type,
           categoryId: template.categoryId,
           templateId: Value(template.id),
-          userId: currentUserId,
+          userId: userId,
         );
       }).toList();
 
-      batch.insertAll(transactions, newTransactions);
+      // NOTE: insertOrIgnore in case another device's copy was already pulled with the same id
+      batch.insertAll(transactions, newTransactions, mode: InsertMode.insertOrIgnore);
     });
   }
 
-  Stream<List<Transaction>> watchAvailableIncomes()
+  Stream<List<Transaction>> watchIncomes(String userId)
   {
     return (
       select(transactions)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) => t.type.equalsValue(TransactionType.income))
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.type.equalsValue(TransactionType.income)
+        )
     ).watch();
   }
 
-  Stream<List<Transaction>> watchAvailableIncomesForMonth(int targetYear, int targetMonth)
+  Stream<List<Transaction>> watchIncomesForMonth(int targetYear, int targetMonth, String userId)
   {
     return (
       select(transactions)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) => t.type.equalsValue(TransactionType.income))
-        ..where((t) => t.date.year.equals(targetYear))
-        ..where((t) => t.date.month.equals(targetMonth))
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.type.equalsValue(TransactionType.income) &
+          t.date.year.equals(targetYear) &
+          t.date.month.equals(targetMonth)
+        )
     ).watch();
   }
 
-  Stream<List<TransactionWithCategory>> watchVisibleTransactionsWithCategory(int targetYear, int targetMonth)
+  Stream<List<TransactionWithCategory>> watchVisibleTransactionsWithCategory(int targetYear, int targetMonth, String userId)
   {
     final query = select(transactions).join([
       innerJoin(categories, categories.id.equalsExp(transactions.categoryId)),
     ])
-      ..where(transactions.isDeleted.equals(false))
-      ..where(transactions.date.year.equals(targetYear))
-      ..where(transactions.date.month.equals(targetMonth))
+      ..where(
+        transactions.userId.equals(userId) &
+        transactions.isDeleted.equals(false) &
+        transactions.date.year.equals(targetYear) &
+        transactions.date.month.equals(targetMonth)
+      )
       ..orderBy([OrderingTerm.desc(transactions.date)]);
 
     return query.watch().map((rows) {
@@ -186,16 +230,15 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     });    
   }
 
-  Future<List<Transaction>> getUnsynced()
+  Future<List<Transaction>> getUnsynced(String userId)
   {
     return (select(transactions)
-      ..where((t) => t.isSynced.equals(false))
+      ..where((t) =>
+        t.userId.equals(userId) &
+        t.isSynced.equals(false)
+      )
     ).get();
   }
 
-  Future<bool> markAsSynced(Transaction entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

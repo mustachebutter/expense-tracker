@@ -183,6 +183,15 @@ class TransactionApp extends ConsumerWidget {
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.black,
     ),
+    // NOTE: Same colors as the selected filter chips. Without this the selected segment
+    // uses colorScheme.onSecondaryContainer, which ColorScheme doesn't set to a readable color
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        foregroundColor: Colors.black,
+        selectedForegroundColor: Colors.white,
+        selectedBackgroundColor: Colors.black54,
+      ),
+    ),
     chipTheme: ChipThemeData(
       selectedColor: Colors.black54,
       labelStyle: TextStyle(
@@ -263,6 +272,14 @@ class TransactionApp extends ConsumerWidget {
     ),
     expansionTileTheme: ExpansionTileThemeData(
       iconColor: Colors.white,
+    ),
+    // NOTE: Dark mode's selected segment used to get black text on a near-black background
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        foregroundColor: Colors.white,
+        selectedForegroundColor: Colors.black,
+        selectedBackgroundColor: Colors.white54,
+      ),
     ),
     chipTheme: ChipThemeData(
       selectedColor: Colors.white54,

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/schema_v1.dart';
+import '../helpers/test_database.dart';
 
 void main()
 {
@@ -47,5 +50,44 @@ void main()
 
     final version = await db.customSelect("PRAGMA user_version").getSingle();
     expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  // NOTE: Same idea, for phones that already have version 2. The Add Transaction form used
+  // to save everything as an expense, so the upgrade gives those rows their category's type
+  test("upgrading a version 2 database fixes transactions saved with the wrong type", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    // Build a version 2 database the way the old app left it
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    final salary = await insertCategory(oldDb, name: "Salary", type: TransactionType.income);
+    final food = await insertCategory(oldDb, name: "Food", type: TransactionType.expense);
+    final date = DateTime(2026, 9, 1);
+    final wrong = await insertTransaction(oldDb, name: "Paycheck", categoryId: salary.id, date: date, type: TransactionType.expense);
+    final lunch = await insertTransaction(oldDb, name: "Lunch", categoryId: food.id, date: date);
+    final fixed = await insertTransaction(oldDb, name: "Fixed", categoryId: salary.id, date: date, type: TransactionType.expense);
+    await oldDb.customStatement("UPDATE transactions SET is_synced = 1");
+    await oldDb.customStatement("UPDATE transactions SET template_id = 'some-template' WHERE id = ?", [fixed.id]);
+    await oldDb.customStatement("PRAGMA user_version = 2");
+    await oldDb.close();
+
+    // Open it again with the current app, which runs the 2 -> 3 upgrade
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+    final rows = {for (final t in await db.transactionsDao.getAll()) t.id: t};
+
+    expect(rows[wrong.id]!.type, TransactionType.income);
+    expect(rows[wrong.id]!.isSynced, isFalse, reason: "the fix has to upload too");
+    expect(rows[wrong.id]!.updatedAt.isAfter(wrong.updatedAt), isTrue, reason: "so it wins over the server's old copy");
+
+    expect(rows[lunch.id]!.type, TransactionType.expense);
+    expect(rows[lunch.id]!.isSynced, isTrue, reason: "rows that were already right are untouched");
+
+    expect(rows[fixed.id]!.type, TransactionType.expense, reason: "fixed transactions come from templates, not the form");
+    expect(rows[fixed.id]!.isSynced, isTrue);
+
+    final version = await db.customSelect("PRAGMA user_version").getSingle();
+    expect(version.read<int>("user_version"), 3);
   });
 }

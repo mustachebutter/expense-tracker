@@ -158,7 +158,27 @@ class AppDatabase extends _$AppDatabase
   }
 
   @override
-  int get schemaVersion => 2;
+  // v3 changes no tables, it only runs _repairTransactionTypes once
+  int get schemaVersion => 3;
+
+  // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
+  // income category. This gives those rows their category's type. Fixed transactions
+  // (template_id set) always had the right type, so they're left alone. Repaired rows are
+  // marked unsynced with a newer updated_at, so the fix uploads and wins over the old copy
+  Future<void> _repairTransactionTypes() async
+  {
+    await customStatement("""
+      UPDATE transactions
+      SET type = (SELECT c.type FROM categories c WHERE c.id = transactions.category_id),
+          is_synced = 0,
+          updated_at = MAX(CAST(strftime('%s', 'now') AS INTEGER), updated_at + 1)
+      WHERE template_id IS NULL
+        AND EXISTS (
+          SELECT 1 FROM categories c
+          WHERE c.id = transactions.category_id AND c.type <> transactions.type
+        )
+    """);
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -178,6 +198,11 @@ class AppDatabase extends _$AppDatabase
           ));
         }
         await m.createTable(syncCursors);
+      }
+
+      if (from < 3)
+      {
+        await _repairTransactionTypes();
       }
     },
   );

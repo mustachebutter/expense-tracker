@@ -96,4 +96,36 @@ void main()
 
     expect(find.byIcon(Icons.sync_problem), findsOneWidget);
   });
+
+  testWidgets("tapping the cloud icon says when everything synced", (tester) async {
+    await pumpApp(tester, screen, db: db, syncEngine: engine);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(SyncStatusButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Everything is synced"), findsOneWidget);
+  });
+
+  testWidgets("tapping the cloud icon shows why a sync failed", (tester) async {
+    await pumpApp(tester, screen, db: db, syncEngine: engine);
+    await tester.pumpAndSettle();
+    engine.failWith = Exception("Supabase is down");
+
+    await tester.tap(find.byType(SyncStatusButton));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("Sync failed"), findsOneWidget);
+    expect(find.textContaining("Supabase is down"), findsOneWidget);
+  });
+
+  testWidgets("tapping the cloud icon while offline says the changes will wait", (tester) async {
+    await pumpApp(tester, screen, db: db, syncEngine: engine, isOnline: false);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(SyncStatusButton));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("You're offline"), findsOneWidget);
+  });
 }

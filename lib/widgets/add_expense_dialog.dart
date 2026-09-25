@@ -115,12 +115,20 @@ class _AddTransactionDialogState extends ConsumerState<AddTransactionDialog>
                       onPressed: () {
                         if (_name.isEmpty || _amount == 0) return;
 
+                        // NOTE: The category decides if this is money in or out, e.g. a
+                        // "Salary" category is income. This used to always save an expense
+                        final category = categories.firstWhere(
+                          (c) => c.id == _selectedTag,
+                          // Nothing picked yet, or the picked category was deleted meanwhile
+                          orElse: () => categories.first,
+                        );
+
                         final newTransaction = TransactionsCompanion(
                           name: drift.Value(_name),
                           amount: drift.Value(_amount),
                           date: drift.Value(DateTime.now()),
-                          type: drift.Value(TransactionType.expense),
-                          categoryId: drift.Value(_selectedTag ?? firstCategoryId),
+                          type: drift.Value(category.type),
+                          categoryId: drift.Value(category.id),
                           isSynced: drift.Value(false),
                         );
 

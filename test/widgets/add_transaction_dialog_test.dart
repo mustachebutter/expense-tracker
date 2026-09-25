@@ -57,4 +57,26 @@ void main()
 
     expect(added, isEmpty);
   });
+
+  testWidgets("uses the category's type, so an income category saves an income", (tester) async {
+    await insertCategory(db, name: "Food");
+    final salary = await insertCategory(db, name: "Salary", type: TransactionType.income);
+    final added = <TransactionsCompanion>[];
+
+    await pumpApp(tester, Scaffold(body: AddTransactionDialog(onTransactionAdded: added.add, currentMonth: DateTime.now())), db: db);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, "Transaction Name"), "Paycheck");
+    await tester.enterText(find.widgetWithText(TextField, "Amount"), "2000");
+    // NOTE: A dropdown is two taps: open it, then pick from the menu that pops up
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Salary").last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, "Add Transaction"));
+    await tester.pump();
+
+    expect(added.single.categoryId.value, salary.id);
+    expect(added.single.type.value, TransactionType.income);
+  });
 }

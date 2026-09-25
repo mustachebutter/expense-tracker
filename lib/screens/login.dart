@@ -42,14 +42,15 @@ class _LoginState extends State<Login> {
 
           final googleUser = await googleSignIn.authenticate();
 
-          final googleAuth = googleUser.authentication;
-          final googleIdToken = googleAuth.idToken;
+          final googleAuthentication = googleUser.authentication;
+          final googleIdToken = googleAuthentication.idToken;
 
-          final scopes = <String>[];
+          // NOTE: Use this for extra permissions (Drive, Calendar, etc.)
+          final scopes = <String>["email", "profile"];
           final googleAuthorization = await googleUser.authorizationClient.authorizationForScopes(scopes)
             ?? await googleUser.authorizationClient.authorizeScopes(scopes);
           final accessToken = googleAuthorization.accessToken;
-
+          
           if (accessToken == null || googleIdToken == null) throw "Missing tokens";
 
           await Supabase.instance.client.auth.signInWithIdToken(

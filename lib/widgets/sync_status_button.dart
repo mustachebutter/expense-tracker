@@ -29,12 +29,36 @@ class SyncStatusButton extends ConsumerWidget
 
     return IconButton(
       tooltip: tooltip,
-      onPressed: () => ref.read(syncControllerProvider.notifier).syncNow(),
+      onPressed: () => _syncAndReport(context, ref),
       icon: Badge(
         isLabelVisible: pending > 0,
         label: Text("$pending"),
         child: Icon(icon),
       ),
     );
+  }
+
+  // NOTE: The icon alone is easy to miss, especially on a phone where tooltips need a
+  // long press, so a tap always says what happened
+  Future<void> _syncAndReport(BuildContext context, WidgetRef ref) async
+  {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    await ref.read(syncControllerProvider.notifier).syncNow();
+
+    final sync = ref.read(syncControllerProvider);
+    final pending = ref.read(pendingChangesProvider).value ?? 0;
+    final String message = switch (sync.status) {
+      SyncStatus.offline => "You're offline. Your changes will sync when you're back online",
+      SyncStatus.error => "Sync failed: ${sync.errorMessage}",
+      _ when pending > 0 => "Synced, but $pending changes are still waiting. Tap again to retry",
+      _ => "Everything is synced",
+    };
+
+    messenger.showSnackBar(SnackBar(
+      content: Text(message),
+      duration: Duration(seconds: sync.status == SyncStatus.error ? 8 : 3),
+    ));
   }
 }

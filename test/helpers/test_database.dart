@@ -21,6 +21,7 @@ Future<Category> insertCategory(
   AppDatabase db, {
   required String name,
   String? id,
+  TransactionType type = TransactionType.expense,
   String userId = userA,
   bool isActive = true,
   bool isDeleted = false,
@@ -34,7 +35,7 @@ Future<Category> insertCategory(
       name: name,
       colorHex: "4CAF50",
       iconKey: "restaurant",
-      type: TransactionType.expense,
+      type: type,
       userId: userId,
       isActive: Value(isActive),
       isDeleted: Value(isDeleted),

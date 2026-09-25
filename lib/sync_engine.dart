@@ -38,6 +38,9 @@ class SupabaseSyncRemote implements SyncRemote
 {
   // NOTE: Supabase returns at most 1000 rows per request by default
   static const int _pageSize = 1000;
+  // NOTE: Without a limit, a request that never gets an answer (bad signal, captive wifi)
+  // would keep the sync "running" forever, and every later sync would wait behind it
+  static const Duration _timeout = Duration(seconds: 30);
 
   final SupabaseClient _supabase;
 
@@ -46,7 +49,7 @@ class SupabaseSyncRemote implements SyncRemote
   @override
   Future<void> upsert(String table, List<Map<String, dynamic>> rows) async
   {
-    await _supabase.from(table).upsert(rows);
+    await _supabase.from(table).upsert(rows).timeout(_timeout);
   }
 
   @override
@@ -61,7 +64,8 @@ class SupabaseSyncRemote implements SyncRemote
 
       final page = await query
         .order("server_updated_at", ascending: true)
-        .range(offset, offset + _pageSize - 1);
+        .range(offset, offset + _pageSize - 1)
+        .timeout(_timeout);
 
       changes.addAll(page);
       if (page.length < _pageSize) return changes;

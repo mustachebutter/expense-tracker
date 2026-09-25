@@ -83,4 +83,25 @@ void main()
     final typeSelector = tester.widget<SegmentedButton<TransactionType>>(find.byType(SegmentedButton<TransactionType>));
     expect(typeSelector.selected, {TransactionType.income});
   });
+
+  testWidgets("adding to an income category raises the income total", (tester) async {
+    await insertCategory(db, name: "Salary", type: TransactionType.income);
+
+    await pumpApp(tester, const Dashboard(), db: db);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(SummaryCard, "\$0.00"), findsNWidgets(3));
+
+    await tester.enterText(find.widgetWithText(TextField, "Transaction Name"), "Paycheck");
+    await tester.enterText(find.widgetWithText(TextField, "Amount"), "2000");
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Salary").last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, "Add Transaction"));
+    await tester.pumpAndSettle();
+
+    // Income and cash flow go up, spending stays at 0
+    expect(find.widgetWithText(SummaryCard, "\$2000.00"), findsNWidgets(2));
+    expect(find.widgetWithText(SummaryCard, "\$0.00"), findsOneWidget);
+  });
 }

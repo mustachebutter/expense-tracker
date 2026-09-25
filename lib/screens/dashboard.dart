@@ -7,6 +7,7 @@ import 'package:expense_tracker/screens/settings.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/monthly_ledger_list.dart';
 import 'package:expense_tracker/widgets/summary_card.dart';
+import 'package:expense_tracker/widgets/sync_status_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,15 +27,6 @@ class _DashboardState extends ConsumerState<Dashboard> {
     return ((endDt.year - startDt.year) * 12) + (endDt.month - startDt.month);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // NOTE: AuthGate only shows the Dashboard when someone is signed in
-      final userId = ref.read(currentUserIdProvider);
-      if (userId != null) ref.read(syncEngineProvider).runStartUpSync(userId);
-    });
-  }
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
@@ -163,6 +155,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
       ),
       appBar: AppBar(
         actions: [
+          const SyncStatusButton(),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {

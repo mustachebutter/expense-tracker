@@ -41,9 +41,5 @@ class TemplatesDao extends BaseDao<Templates, Template> with _$TemplatesDaoMixin
     ).get();
   }
 
-  Future<bool> markAsSynced(Template entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

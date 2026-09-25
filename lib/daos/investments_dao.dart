@@ -32,9 +32,5 @@ class InvestmentsDao extends BaseDao<Investments, Investment> with _$Investments
     ).get();
   }
 
-  Future<bool> markAsSynced(Investment entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

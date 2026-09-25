@@ -66,8 +66,4 @@ class CategoriesDao extends BaseDao<Categories, Category> with _$CategoriesDaoMi
     ).get();
   }
 
-  Future<bool> markAsSynced(Category entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 }

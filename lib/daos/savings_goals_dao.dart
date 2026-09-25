@@ -31,9 +31,5 @@ class SavingsGoalsDao extends BaseDao<SavingsGoals, SavingsGoal> with _$SavingsG
     ).get();
   }
 
-  Future<bool> markAsSynced(SavingsGoal entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

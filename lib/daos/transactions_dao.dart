@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/daos/base_dao.dart';
 import 'package:expense_tracker/database.dart';
+import 'package:uuid/uuid.dart';
 
 part 'transactions_dao.g.dart';
 
@@ -13,6 +14,16 @@ class TransactionWithCategory
     required this.expense,
     required this.category,
   });
+}
+
+// NOTE: A fixed transaction's id is derived from its template and month instead of being random.
+// Two offline devices generating "Rent, March 2026" then produce the SAME id, so after
+// syncing it's one row instead of a duplicate
+const String _fixedTransactionNamespace = "6f1c9a52-3d0b-4e57-9d6e-2b1f8c4a7e10";
+
+String fixedTransactionId(String templateId, int year, int month)
+{
+  return const Uuid().v5(_fixedTransactionNamespace, "$templateId:$year-$month");
 }
 
 typedef DashboardMetrics = ({ double income, double expense, double cashFlow });
@@ -80,6 +91,7 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     final softDeletedTransaction = entity.copyWith(
       isDeleted: true,
       isSynced: false,
+      updatedAt: nextUpdatedAt(entity.updatedAt),
     );
 
     return updateRow(softDeletedTransaction);
@@ -153,6 +165,7 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
         final chargeDate = _getChargeDate(template.billingDay);
 
         return TransactionsCompanion.insert(
+          id: Value(fixedTransactionId(template.id, targetYear, targetMonth)),
           name: template.name,
           amount: template.amount,
           date: chargeDate,
@@ -163,7 +176,8 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
         );
       }).toList();
 
-      batch.insertAll(transactions, newTransactions);
+      // NOTE: insertOrIgnore in case another device's copy was already pulled with the same id
+      batch.insertAll(transactions, newTransactions, mode: InsertMode.insertOrIgnore);
     });
   }
 
@@ -226,9 +240,5 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     ).get();
   }
 
-  Future<bool> markAsSynced(Transaction entity)
-  {
-    return updateRow(entity.copyWith(isSynced: true));
-  }
 
 }

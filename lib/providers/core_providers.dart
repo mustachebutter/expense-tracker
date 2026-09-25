@@ -10,7 +10,12 @@ final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase.instance);
 final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
 
 final authStateProvider = StreamProvider<AuthState>((ref) {
-  return ref.watch(supabaseProvider).auth.onAuthStateChange;
+  return ref.watch(supabaseProvider).auth.onAuthStateChange.handleError(
+    (Object error) => print("⚠️ Couldn't refresh the session, probably offline: $error"),
+    // NOTE: Offline, Supabase keeps the saved session but reports each failed token
+    // refresh on this stream. That's not a sign out, so don't let it become an error state
+    test: (error) => error is AuthRetryableFetchException,
+  );
 });
 
 // NOTE: Re-evaluates on every auth event, but only notifies listeners when the id
@@ -20,8 +25,12 @@ final currentUserIdProvider = Provider<String?>((ref) {
   return ref.watch(supabaseProvider).auth.currentUser?.id;
 });
 
+final syncRemoteProvider = Provider<SyncRemote>((ref) {
+  return SupabaseSyncRemote(ref.watch(supabaseProvider));
+});
+
 final syncEngineProvider = Provider<SyncEngine>((ref) {
-  return SyncEngine(ref.watch(databaseProvider), ref.watch(supabaseProvider));
+  return SyncEngine(ref.watch(databaseProvider), ref.watch(syncRemoteProvider));
 });
 
 extension RequireUserId on Ref

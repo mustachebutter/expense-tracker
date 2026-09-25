@@ -20,13 +20,17 @@ AppDatabase createTestDatabase()
 Future<Category> insertCategory(
   AppDatabase db, {
   required String name,
+  String? id,
   String userId = userA,
   bool isActive = true,
   bool isDeleted = false,
+  bool isSynced = false,
+  DateTime? updatedAt,
 }) async
 {
   return db.into(db.categories).insertReturning(
     CategoriesCompanion.insert(
+      id: id == null ? const Value.absent() : Value(id),
       name: name,
       colorHex: "4CAF50",
       iconKey: "restaurant",
@@ -34,6 +38,8 @@ Future<Category> insertCategory(
       userId: userId,
       isActive: Value(isActive),
       isDeleted: Value(isDeleted),
+      isSynced: Value(isSynced),
+      updatedAt: updatedAt == null ? const Value.absent() : Value(updatedAt),
     ),
   );
 }
@@ -44,6 +50,7 @@ Future<Template> insertTemplate(
   required String categoryId,
   required int billingDay,
   required DateTime startDate,
+  String? id,
   double amount = 10.0,
   String userId = userA,
   bool isActive = true,
@@ -52,6 +59,7 @@ Future<Template> insertTemplate(
 {
   return db.into(db.templates).insertReturning(
     TemplatesCompanion.insert(
+      id: id == null ? const Value.absent() : Value(id),
       name: name,
       amount: amount,
       billingDay: billingDay,

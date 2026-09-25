@@ -31,6 +31,9 @@ class Categories extends Table
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  // NOTE: When this row was last changed locally. Inserts get it for free, updates
+  // must set it (see nextUpdatedAt). Sync uses it to decide which edit wins
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -52,6 +55,9 @@ class Transactions extends Table
 
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  // NOTE: When this row was last changed locally. Inserts get it for free, updates
+  // must set it (see nextUpdatedAt). Sync uses it to decide which edit wins
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
   
   @override
   Set<Column> get primaryKey => {id};
@@ -72,6 +78,9 @@ class Templates extends Table
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  // NOTE: When this row was last changed locally. Inserts get it for free, updates
+  // must set it (see nextUpdatedAt). Sync uses it to decide which edit wins
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -88,6 +97,9 @@ class SavingsGoals extends Table
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  // NOTE: When this row was last changed locally. Inserts get it for free, updates
+  // must set it (see nextUpdatedAt). Sync uses it to decide which edit wins
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -104,13 +116,30 @@ class Investments extends Table
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  // NOTE: When this row was last changed locally. Inserts get it for free, updates
+  // must set it (see nextUpdatedAt). Sync uses it to decide which edit wins
+  DateTimeColumn get updatedAt => dateTime().clientDefault(() => DateTime.now())();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+// NOTE: Remembers how far each table has been pulled from Supabase, so the next
+// sync only downloads rows that changed after that point
+class SyncCursors extends Table
+{
+  // "<userId>:<table>", each user on this device has their own position per table
+  TextColumn get scope => text()();
+  // The server's server_updated_at of the newest row we've pulled, kept as the raw
+  // string so no precision is lost (Drift would round a DateTime to whole seconds)
+  TextColumn get cursor => text()();
+
+  @override
+  Set<Column> get primaryKey => {scope};
+}
+
 @DriftDatabase(
-  tables: [Categories, Transactions, Templates, SavingsGoals, Investments],
+  tables: [Categories, Transactions, Templates, SavingsGoals, Investments, SyncCursors],
   daos: [CategoriesDao, TransactionsDao, TemplatesDao, SavingsGoalsDao, InvestmentsDao]
 )
 class AppDatabase extends _$AppDatabase
@@ -129,7 +158,39 @@ class AppDatabase extends _$AppDatabase
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2)
+      {
+        // NOTE: SQLite can't ADD COLUMN with a "now" default, so alterTable rebuilds
+        // each table and fills updatedAt for existing rows with the current time
+        for (final table in <TableInfo>[categories, transactions, templates, savingsGoals, investments])
+        {
+          final updatedAt = table.columnsByName["updated_at"]!;
+          await m.alterTable(TableMigration(
+            table,
+            newColumns: [updatedAt],
+            columnTransformer: {updatedAt: currentDateAndTime},
+          ));
+        }
+        await m.createTable(syncCursors);
+      }
+    },
+  );
+}
+
+// NOTE: Drift stores DateTime in whole seconds, so two edits within the same second
+// would get the same updatedAt and sync couldn't tell them apart. This always moves
+// updatedAt forward by at least a second. Use it for every local UPDATE
+DateTime nextUpdatedAt(DateTime previous)
+{
+  final now = DateTime.now();
+  final minimum = previous.add(const Duration(seconds: 1));
+  return now.isAfter(minimum) ? now : minimum;
 }
 
 LazyDatabase _openConnection()

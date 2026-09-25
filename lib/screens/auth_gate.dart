@@ -1,6 +1,7 @@
 import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/screens/dashboard.dart';
 import 'package:expense_tracker/screens/login.dart';
+import 'package:expense_tracker/widgets/sync_triggers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,7 +22,8 @@ class AuthGate extends ConsumerWidget
 
     if (userId != null)
     {
-      return const Dashboard();
+      // NOTE: SyncTriggers only exists while someone is signed in, so signing out stops syncing
+      return const SyncTriggers(child: Dashboard());
     }
 
     return const Login();

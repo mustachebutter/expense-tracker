@@ -6,12 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 typedef YearMonth = ({int year, int month});
 
-final dashboardMetricsProvider = StreamProvider<DashboardMetrics>((ref) {
-  final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) return Stream.value((income: 0.0, expense: 0.0, cashFlow: 0.0));
+// NOTE: The summary cards are for one month, like the ledger. They used to add up every
+// transaction ever, so "Monthly Income" really showed all-time income
+final dashboardMetricsProvider = StreamProvider.autoDispose
+  .family<DashboardMetrics, YearMonth>((ref, yearMonth) {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return Stream.value((income: 0.0, expense: 0.0, cashFlow: 0.0));
 
-  return ref.watch(databaseProvider).transactionsDao.watchDashboardMetrics(userId);
-});
+    return ref.watch(databaseProvider).transactionsDao
+      .watchDashboardMetrics(yearMonth.year, yearMonth.month, userId);
+  });
 
 // NOTE: One stream per month. autoDispose closes the query once no ledger list is showing it
 final monthlyTransactionsProvider = StreamProvider.autoDispose

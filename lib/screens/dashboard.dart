@@ -30,7 +30,7 @@ class _DashboardState extends ConsumerState<Dashboard> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.sizeOf(context).width;
-    final metricsAsync = ref.watch(dashboardMetricsProvider);
+    final metricsAsync = ref.watch(dashboardMetricsProvider((year: _selectedMonth.year, month: _selectedMonth.month)));
     final categories = ref.watch(activeCategoriesProvider).value ?? [];
     final activeFilter = ref.watch(activeFilterProvider);
     final TextStyle titleTextStyle = screenWidth < 600

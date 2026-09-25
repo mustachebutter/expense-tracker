@@ -3,6 +3,7 @@ import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/providers/category_providers.dart';
 import 'package:expense_tracker/widgets/forms/form_helpers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Pass a category to edit it, or nothing to add a new one.
@@ -43,7 +44,41 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog>
     _nameController = TextEditingController(text: category?.name ?? "");
     _type = category?.type ?? TransactionType.expense;
     _iconKey = category?.iconKey ?? AppConstants.iconKeys.first;
-    _colorHex = category?.colorHex ?? AppConstants.categoryColorHexes.first;
+    _colorHex = category?.colorHex ?? AppConstants.defaultCategoryColorHex;
+  }
+
+  // Same picker as shift_lunar: a dialog with a color wheel, applied when you tap Select
+  Future<void> _pickColor() async
+  {
+    Color pickedColor = AppConstants.getColorFromHex(_colorHex);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Pick a color"),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: pickedColor,
+            onColorChanged: (color) => pickedColor = color,
+            // NOTE: No transparency, the color is saved as 6 hex digits (RRGGBB)
+            enableAlpha: false,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _colorHex = AppConstants.colorToHex(pickedColor));
+              Navigator.pop(dialogContext);
+            },
+            child: const Text("Select"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -72,7 +107,10 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog>
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final Color color = AppConstants.getColorFromHex(_colorHex);
+    // NOTE: The chip theme in main.dart colors a selected chip's text but not its icon,
+    // so match it here or the selected icon is black on dark grey (white on light grey)
+    final Color selectedIconColor = Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white;
 
     return FormDialogScaffold(
       title: _isEditing ? "Edit Category" : "Add Category",
@@ -96,7 +134,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog>
           children: AppConstants.iconKeys.map((key) {
             return ChoiceChip(
               key: Key("icon_$key"),
-              label: AppConstants.getIcon(key),
+              label: AppConstants.getIcon(key, color: _iconKey == key ? selectedIconColor : null),
               showCheckmark: false,
               selected: _iconKey == key,
               onSelected: (_) => setState(() => _iconKey = key),
@@ -104,31 +142,17 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog>
           }).toList(),
         ),
 
-        const Text("Color"),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: AppConstants.categoryColorHexes.map((hex) {
-            final bool isSelected = _colorHex == hex;
-            return InkWell(
-              key: Key("color_$hex"),
-              customBorder: const CircleBorder(),
-              onTap: () => setState(() => _colorHex = hex),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppConstants.getColorFromHex(hex),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? colorScheme.onSurface : Colors.transparent,
-                    width: 3,
-                  ),
-                ),
-                child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
-              ),
-            );
-          }).toList(),
+        ListTile(
+          key: const Key("category_color"),
+          contentPadding: EdgeInsets.zero,
+          title: const Text("Color"),
+          subtitle: Text("#$_colorHex"),
+          trailing: CircleAvatar(
+            backgroundColor: color,
+            radius: 16,
+            child: AppConstants.getIcon(_iconKey, color: AppConstants.onColor(color)),
+          ),
+          onTap: _pickColor,
         ),
       ],
     );

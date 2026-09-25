@@ -110,15 +110,18 @@ void main()
   });
 
   group("watchDashboardMetrics", () {
-    test("sums only the user's non-deleted transactions", () async {
+    test("sums only the user's non-deleted transactions in that month", () async {
       final date = DateTime(2025, 3, 5);
       await insertTransaction(db, name: "Salary", categoryId: food.id, date: date, amount: 1000, type: TransactionType.income);
       await insertTransaction(db, name: "Lunch", categoryId: food.id, date: date, amount: 30);
       await insertTransaction(db, name: "Deleted", categoryId: food.id, date: date, amount: 500, isDeleted: true);
       await insertTransaction(db, name: "Someone else", categoryId: food.id, date: date, amount: 999, userId: userB);
+      // Regression check: these used to be added in too, making "Monthly Income" all-time income
+      await insertTransaction(db, name: "Last month's salary", categoryId: food.id, date: DateTime(2025, 2, 5), amount: 1000, type: TransactionType.income);
+      await insertTransaction(db, name: "Next month's rent", categoryId: food.id, date: DateTime(2025, 4, 1), amount: 800);
 
       // NOTE: .first takes the first value a Stream emits and turns it into a Future we can await
-      final metrics = await db.transactionsDao.watchDashboardMetrics(userA).first;
+      final metrics = await db.transactionsDao.watchDashboardMetrics(2025, 3, userA).first;
 
       expect(metrics.income, 1000);
       expect(metrics.expense, 30);

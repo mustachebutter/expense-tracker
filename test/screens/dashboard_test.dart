@@ -25,6 +25,8 @@ void main()
     await insertTransaction(db, name: "Salary", categoryId: food.id, date: now, amount: 1000, type: TransactionType.income);
     await insertTransaction(db, name: "Lunch", categoryId: food.id, date: now, amount: 25);
     await insertTransaction(db, name: "Someone else's", categoryId: food.id, date: now, amount: 999, userId: userB);
+    // Last month's income must not count towards this month's cards
+    await insertTransaction(db, name: "Old salary", categoryId: food.id, date: DateTime(now.year, now.month - 1, 5), amount: 4200, type: TransactionType.income);
 
     await pumpApp(tester, const Dashboard(), db: db);
     await tester.pumpAndSettle();

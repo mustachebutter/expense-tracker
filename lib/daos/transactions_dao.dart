@@ -60,7 +60,8 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
     return row?.read(earliestDate);
   }
 
-  Stream<DashboardMetrics> watchDashboardMetrics(String userId)
+  // Income, spending and cash flow for one month, for the Dashboard's summary cards
+  Stream<DashboardMetrics> watchDashboardMetrics(int targetYear, int targetMonth, String userId)
   {
     final incomeSum = transactions.amount.sum(
       filter: transactions.type.equalsValue(TransactionType.income)
@@ -74,7 +75,9 @@ class TransactionsDao extends BaseDao<Transactions, Transaction> with _$Transact
       ..addColumns([incomeSum, expenseSum])
       ..where(
         transactions.userId.equals(userId) &
-        transactions.isDeleted.equals(false)
+        transactions.isDeleted.equals(false) &
+        transactions.date.year.equals(targetYear) &
+        transactions.date.month.equals(targetMonth)
       );
 
     return query.watchSingle().map((row) {

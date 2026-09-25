@@ -70,4 +70,17 @@ void main()
     expect(find.text("Lunch"), findsNothing);
     expect(find.text("Train"), findsOneWidget);
   });
+
+  testWidgets("the ledger's Add Fixed button opens the fixed transaction form set to Income", (tester) async {
+    await pumpApp(tester, const Dashboard(), db: db);
+    await tester.pumpAndSettle();
+
+    // NOTE: .first is this month's ledger, the only one that starts expanded
+    await tester.tap(find.widgetWithText(TextButton, "Add Fixed").first);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Add Fixed Transaction"), findsOneWidget);
+    final typeSelector = tester.widget<SegmentedButton<TransactionType>>(find.byType(SegmentedButton<TransactionType>));
+    expect(typeSelector.selected, {TransactionType.income});
+  });
 }

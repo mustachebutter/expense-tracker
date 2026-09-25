@@ -2,6 +2,7 @@ import 'package:expense_tracker/daos/transactions_dao.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/extensions/number.dart';
 import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/widgets/forms/template_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -117,9 +118,7 @@ class LedgerList extends StatelessWidget
                               children: [
                                 const Text("Income", style: TextStyle(fontWeight: FontWeight.w900),),
                                 TextButton.icon( 
-                                  onPressed: () {
-                                    //TODO: Add fixed transactions handler
-                                  },
+                                  onPressed: () => showTemplateFormDialog(context, initialType: TransactionType.income),
                                   icon: const Icon(Icons.add,),
                                   label: const Text("Add Fixed",),
                                 )

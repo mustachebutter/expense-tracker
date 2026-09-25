@@ -63,6 +63,21 @@ abstract class BaseDao<T extends Table, D> extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  // Soft deletes one of the user's rows so the deletion can sync to other devices.
+  // NOTE: updated_at is stored in whole seconds, "+ 1" guarantees it moves forward
+  // even if the row was edited earlier in this same second (same idea as nextUpdatedAt)
+  Future<int> softDeleteById(String id, String userId)
+  {
+    return customUpdate(
+      "UPDATE ${table.actualTableName} "
+      "SET is_deleted = 1, is_synced = 0, updated_at = MAX(?, updated_at + 1) "
+      "WHERE id = ? AND user_id = ?",
+      variables: [Variable<DateTime>(DateTime.now()), Variable<String>(id), Variable<String>(userId)],
+      updates: {table},
+      updateKind: UpdateKind.update,
+    );
+  }
+
   Stream<List<D>> watchAll() => select(table).watch();
   Future<List<D>> getAll() => select(table).get();
 }

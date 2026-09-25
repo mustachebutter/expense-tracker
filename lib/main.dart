@@ -94,6 +94,14 @@ class AppConstants {
     "more_horiz": Symbols.more_horiz,
   };
 
+  // Every icon a category can use, for the icon picker in the category form
+  static List<String> get iconKeys => _iconMap.keys.toList();
+
+  // Colors offered in the category form, stored on the category as a hex string
+  static const List<String> categoryColorHexes = [
+    "4CAF50", "2196F3", "F44336", "FF9800", "9C27B0", "009688", "795548", "607D8B",
+  ];
+
   static Icon getIcon(String key)
   {
     return Icon(_iconMap[key] ?? Icons.help_outline);

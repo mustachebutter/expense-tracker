@@ -88,6 +88,29 @@ void main()
     expect(rows[fixed.id]!.isSynced, isTrue);
 
     final version = await db.customSelect("PRAGMA user_version").getSingle();
-    expect(version.read<int>("user_version"), 3);
+    expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  test("upgrading a version 3 database adds the receipts table and keeps everything else", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    // A version 3 database: today's tables, minus receipts
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    final food = await insertCategory(oldDb, name: "Food");
+    await oldDb.customStatement("DROP TABLE receipts");
+    await oldDb.customStatement("PRAGMA user_version = 3");
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    expect((await db.categoriesDao.getAll()).single.id, food.id);
+    await db.into(db.receipts).insert(ReceiptsCompanion.insert(userId: "user-a"));
+    expect(await db.receiptsDao.getUnsynced("user-a"), hasLength(1));
+
+    final version = await db.customSelect("PRAGMA user_version").getSingle();
+    expect(version.read<int>("user_version"), 4);
   });
 }

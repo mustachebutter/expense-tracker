@@ -3,6 +3,7 @@ import 'package:expense_tracker/providers/category_providers.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/providers/transaction_providers.dart';
+import 'package:expense_tracker/screens/receipts.dart';
 import 'package:expense_tracker/screens/settings.dart';
 import 'package:expense_tracker/widgets/add_expense_dialog.dart';
 import 'package:expense_tracker/widgets/monthly_ledger_list.dart';
@@ -156,6 +157,13 @@ class _DashboardState extends ConsumerState<Dashboard> {
       appBar: AppBar(
         actions: [
           const SyncStatusButton(),
+          IconButton(
+            tooltip: "Receipts",
+            icon: Icon(Icons.receipt_long),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ReceiptsScreen()));
+            },
+          ),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {

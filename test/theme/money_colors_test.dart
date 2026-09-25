@@ -67,6 +67,19 @@ void main()
     });
   }
 
+  for (final name in ["light", "dark"])
+  {
+    test("tab labels are readable on the $name theme", () {
+      final theme = name == "light" ? lightTheme : darkTheme;
+      final background = theme.colorScheme.surface; // what the AppBar and Scaffold are drawn on
+
+      // NOTE: Regression check, the selected tab used to be drawn in colorScheme.primary,
+      // which is the background color in these themes (white on white / black on black)
+      expect(contrastRatio(theme.tabBarTheme.labelColor!, background), greaterThanOrEqualTo(4.5));
+      expect(contrastRatio(theme.tabBarTheme.unselectedLabelColor!, background), greaterThanOrEqualTo(4.5));
+    });
+  }
+
   test("plain Colors.green would NOT have been readable on the light theme", () {
     // This is why the theme uses darker shades instead of the obvious choice
     expect(contrastRatio(Colors.green, lightTheme.colorScheme.primary), lessThan(4.5));

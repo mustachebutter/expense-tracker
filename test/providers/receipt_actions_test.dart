@@ -67,7 +67,7 @@ void main()
       final saved = await reload(receipt.id);
       expect(saved.userId, userA);
       expect(saved.merchant, isNull);
-      expect(saved.scanStatus, ReceiptScanStatus.notScanned);
+      expect(saved.scanStatus, ReceiptScanStatus.waiting, reason: "every new photo is queued for the scanner");
       expect(saved.isSynced, isFalse);
     });
 

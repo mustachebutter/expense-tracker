@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/services/receipt_scanner.dart';
 
 import 'test_database.dart';
 
@@ -21,6 +22,12 @@ class FakeReceiptImageStore extends ReceiptImageStore
     images[receiptId] = bytes;
     return ReceiptImageStore.fileIn(Directory.systemTemp, receiptId);
   }
+
+  @override
+  Future<Uint8List?> read(String receiptId) async => images[receiptId];
+
+  @override
+  Future<bool> exists(String receiptId) async => images.containsKey(receiptId);
 
   @override
   Future<void> delete(String receiptId) async => images.remove(receiptId);
@@ -75,4 +82,25 @@ Future<Receipt> insertReceipt(
       createdAt: createdAt == null ? const Value.absent() : Value(createdAt),
     ),
   );
+}
+
+// Pretends to read [rows] off every photo (or to fail, if [failWith] is set)
+class FakeReceiptScanner implements ReceiptScanner
+{
+  @override
+  final bool isAvailable;
+
+  List<String> rows;
+  Object? failWith;
+  final List<String> scannedPaths = [];
+
+  FakeReceiptScanner({this.isAvailable = true, this.rows = const []});
+
+  @override
+  Future<List<String>> readRows(File image) async
+  {
+    scannedPaths.add(image.path);
+    if (failWith != null) throw failWith!;
+    return rows;
+  }
 }

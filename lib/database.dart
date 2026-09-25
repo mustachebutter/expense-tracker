@@ -127,9 +127,10 @@ class Investments extends Table
 
 enum ReceiptScanStatus
 {
-  // Nobody has tried to read it yet, fields are filled in by hand (the only state until OCR exists)
+  // Receipts added before scanning existed. They're filled in by hand
   notScanned,
-  // Queued for the scanner (ML Kit on a phone, or the self-hosted model)
+  // Queued for the scanner. On a device that can't scan (e.g. Windows with ML Kit), it waits
+  // until a device that can (the phone) syncs, downloads the photo and reads it
   waiting,
   scanned,
   failed,
@@ -149,6 +150,8 @@ class Receipts extends Table
   // Set once the receipt has been turned into a transaction, so it isn't added twice
   TextColumn get transactionId => text().nullable().references(Transactions, #id)();
   IntColumn get scanStatus => intEnum<ReceiptScanStatus>().withDefault(const Constant(0))();
+  // True once the photo is in Supabase Storage. Other devices download it when they see this
+  BoolColumn get imageUploaded => boolean().withDefault(const Constant(false))();
 
   // Favourites are the receipts pinned on the board
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
@@ -202,8 +205,9 @@ class AppDatabase extends _$AppDatabase
   }
 
   @override
-  // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts
-  int get schemaVersion => 4;
+  // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
+  // v5 adds receipts.image_uploaded
+  int get schemaVersion => 5;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -251,7 +255,12 @@ class AppDatabase extends _$AppDatabase
 
       if (from < 4)
       {
+        // NOTE: Created with today's columns, so a v3 database skips straight past v5 too
         await m.createTable(receipts);
+      }
+      else if (from < 5)
+      {
+        await m.addColumn(receipts, receipts.imageUploaded);
       }
     },
   );

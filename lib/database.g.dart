@@ -3348,6 +3348,21 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   ).withConverter<ReceiptScanStatus>($ReceiptsTable.$converterscanStatus);
+  static const VerificationMeta _imageUploadedMeta = const VerificationMeta(
+    'imageUploaded',
+  );
+  @override
+  late final GeneratedColumn<bool> imageUploaded = GeneratedColumn<bool>(
+    'image_uploaded',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("image_uploaded" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -3455,6 +3470,7 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     categoryId,
     transactionId,
     scanStatus,
+    imageUploaded,
     isFavorite,
     boardX,
     boardY,
@@ -3517,6 +3533,15 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         transactionId.isAcceptableOrUnknown(
           data['transaction_id']!,
           _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_uploaded')) {
+      context.handle(
+        _imageUploadedMeta,
+        imageUploaded.isAcceptableOrUnknown(
+          data['image_uploaded']!,
+          _imageUploadedMeta,
         ),
       );
     }
@@ -3611,6 +3636,10 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
           data['${effectivePrefix}scan_status'],
         )!,
       ),
+      imageUploaded: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}image_uploaded'],
+      )!,
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -3664,6 +3693,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final String? categoryId;
   final String? transactionId;
   final ReceiptScanStatus scanStatus;
+  final bool imageUploaded;
   final bool isFavorite;
   final double? boardX;
   final double? boardY;
@@ -3681,6 +3711,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     this.categoryId,
     this.transactionId,
     required this.scanStatus,
+    required this.imageUploaded,
     required this.isFavorite,
     this.boardX,
     this.boardY,
@@ -3715,6 +3746,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
         $ReceiptsTable.$converterscanStatus.toSql(scanStatus),
       );
     }
+    map['image_uploaded'] = Variable<bool>(imageUploaded);
     map['is_favorite'] = Variable<bool>(isFavorite);
     if (!nullToAbsent || boardX != null) {
       map['board_x'] = Variable<double>(boardX);
@@ -3748,6 +3780,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ? const Value.absent()
           : Value(transactionId),
       scanStatus: Value(scanStatus),
+      imageUploaded: Value(imageUploaded),
       isFavorite: Value(isFavorite),
       boardX: boardX == null && nullToAbsent
           ? const Value.absent()
@@ -3779,6 +3812,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       scanStatus: $ReceiptsTable.$converterscanStatus.fromJson(
         serializer.fromJson<int>(json['scanStatus']),
       ),
+      imageUploaded: serializer.fromJson<bool>(json['imageUploaded']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       boardX: serializer.fromJson<double?>(json['boardX']),
       boardY: serializer.fromJson<double?>(json['boardY']),
@@ -3803,6 +3837,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       'scanStatus': serializer.toJson<int>(
         $ReceiptsTable.$converterscanStatus.toJson(scanStatus),
       ),
+      'imageUploaded': serializer.toJson<bool>(imageUploaded),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'boardX': serializer.toJson<double?>(boardX),
       'boardY': serializer.toJson<double?>(boardY),
@@ -3823,6 +3858,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     Value<String?> categoryId = const Value.absent(),
     Value<String?> transactionId = const Value.absent(),
     ReceiptScanStatus? scanStatus,
+    bool? imageUploaded,
     bool? isFavorite,
     Value<double?> boardX = const Value.absent(),
     Value<double?> boardY = const Value.absent(),
@@ -3842,6 +3878,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
         ? transactionId.value
         : this.transactionId,
     scanStatus: scanStatus ?? this.scanStatus,
+    imageUploaded: imageUploaded ?? this.imageUploaded,
     isFavorite: isFavorite ?? this.isFavorite,
     boardX: boardX.present ? boardX.value : this.boardX,
     boardY: boardY.present ? boardY.value : this.boardY,
@@ -3867,6 +3904,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       scanStatus: data.scanStatus.present
           ? data.scanStatus.value
           : this.scanStatus,
+      imageUploaded: data.imageUploaded.present
+          ? data.imageUploaded.value
+          : this.imageUploaded,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -3891,6 +3931,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
+          ..write('imageUploaded: $imageUploaded, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -3913,6 +3954,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     categoryId,
     transactionId,
     scanStatus,
+    imageUploaded,
     isFavorite,
     boardX,
     boardY,
@@ -3934,6 +3976,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.categoryId == this.categoryId &&
           other.transactionId == this.transactionId &&
           other.scanStatus == this.scanStatus &&
+          other.imageUploaded == this.imageUploaded &&
           other.isFavorite == this.isFavorite &&
           other.boardX == this.boardX &&
           other.boardY == this.boardY &&
@@ -3953,6 +3996,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String?> categoryId;
   final Value<String?> transactionId;
   final Value<ReceiptScanStatus> scanStatus;
+  final Value<bool> imageUploaded;
   final Value<bool> isFavorite;
   final Value<double?> boardX;
   final Value<double?> boardY;
@@ -3971,6 +4015,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
+    this.imageUploaded = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -3990,6 +4035,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
+    this.imageUploaded = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -4009,6 +4055,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? categoryId,
     Expression<String>? transactionId,
     Expression<int>? scanStatus,
+    Expression<bool>? imageUploaded,
     Expression<bool>? isFavorite,
     Expression<double>? boardX,
     Expression<double>? boardY,
@@ -4028,6 +4075,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (categoryId != null) 'category_id': categoryId,
       if (transactionId != null) 'transaction_id': transactionId,
       if (scanStatus != null) 'scan_status': scanStatus,
+      if (imageUploaded != null) 'image_uploaded': imageUploaded,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (boardX != null) 'board_x': boardX,
       if (boardY != null) 'board_y': boardY,
@@ -4049,6 +4097,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String?>? categoryId,
     Value<String?>? transactionId,
     Value<ReceiptScanStatus>? scanStatus,
+    Value<bool>? imageUploaded,
     Value<bool>? isFavorite,
     Value<double?>? boardX,
     Value<double?>? boardY,
@@ -4068,6 +4117,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       categoryId: categoryId ?? this.categoryId,
       transactionId: transactionId ?? this.transactionId,
       scanStatus: scanStatus ?? this.scanStatus,
+      imageUploaded: imageUploaded ?? this.imageUploaded,
       isFavorite: isFavorite ?? this.isFavorite,
       boardX: boardX ?? this.boardX,
       boardY: boardY ?? this.boardY,
@@ -4108,6 +4158,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       map['scan_status'] = Variable<int>(
         $ReceiptsTable.$converterscanStatus.toSql(scanStatus.value),
       );
+    }
+    if (imageUploaded.present) {
+      map['image_uploaded'] = Variable<bool>(imageUploaded.value);
     }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
@@ -4150,6 +4203,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
+          ..write('imageUploaded: $imageUploaded, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -6654,6 +6708,7 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       Value<String?> categoryId,
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
+      Value<bool> imageUploaded,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6674,6 +6729,7 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String?> categoryId,
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
+      Value<bool> imageUploaded,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6762,6 +6818,11 @@ class $$ReceiptsTableFilterComposer
   get scanStatus => $composableBuilder(
     column: $table.scanStatus,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
@@ -6890,6 +6951,11 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -7007,6 +7073,11 @@ class $$ReceiptsTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumn<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => column,
@@ -7116,6 +7187,7 @@ class $$ReceiptsTableTableManager
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
+                Value<bool> imageUploaded = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7134,6 +7206,7 @@ class $$ReceiptsTableTableManager
                 categoryId: categoryId,
                 transactionId: transactionId,
                 scanStatus: scanStatus,
+                imageUploaded: imageUploaded,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,
@@ -7154,6 +7227,7 @@ class $$ReceiptsTableTableManager
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
+                Value<bool> imageUploaded = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7172,6 +7246,7 @@ class $$ReceiptsTableTableManager
                 categoryId: categoryId,
                 transactionId: transactionId,
                 scanStatus: scanStatus,
+                imageUploaded: imageUploaded,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,

@@ -35,6 +35,18 @@ class ReceiptImageStore
     return fileIn(folder, receiptId).writeAsBytes(bytes, flush: true);
   }
 
+  // The photo's file on this device (it may not exist, e.g. not downloaded yet)
+  Future<File> fileFor(String receiptId) async => fileIn(await _directory(), receiptId);
+
+  Future<bool> exists(String receiptId) async => (await fileFor(receiptId)).exists();
+
+  // The photo's bytes, or null if it isn't on this device
+  Future<Uint8List?> read(String receiptId) async
+  {
+    final file = await fileFor(receiptId);
+    return await file.exists() ? file.readAsBytes() : null;
+  }
+
   Future<void> delete(String receiptId) async
   {
     final file = fileIn(await _directory(), receiptId);

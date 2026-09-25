@@ -1,4 +1,5 @@
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,8 +30,11 @@ final syncRemoteProvider = Provider<SyncRemote>((ref) {
   return SupabaseSyncRemote(ref.watch(supabaseProvider));
 });
 
+// Where receipt photos are kept on this device
+final receiptImageStoreProvider = Provider<ReceiptImageStore>((ref) => ReceiptImageStore.appDocuments());
+
 final syncEngineProvider = Provider<SyncEngine>((ref) {
-  return SyncEngine(ref.watch(databaseProvider), ref.watch(syncRemoteProvider));
+  return SyncEngine(ref.watch(databaseProvider), ref.watch(syncRemoteProvider), ref.watch(receiptImageStoreProvider));
 });
 
 extension RequireUserId on Ref

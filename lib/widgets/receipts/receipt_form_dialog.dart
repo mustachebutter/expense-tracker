@@ -3,6 +3,7 @@ import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/providers/category_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
+import 'package:expense_tracker/providers/receipt_scan_providers.dart';
 import 'package:expense_tracker/widgets/forms/form_helpers.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_image.dart';
 import 'package:flutter/material.dart';
@@ -39,18 +40,97 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   String? _categoryId;
   late bool _isFavorite;
   bool _addAsTransaction = false;
+  bool _isScanning = false;
 
-  bool get _isAlreadyTransaction => widget.receipt.transactionId != null;
+  // NOTE: The receipt as it is now. Scanning changes it while the dialog is open, and saving
+  // has to build on that copy (otherwise it would put the scan status back to "waiting")
+  late Receipt _current;
+
+  bool get _isAlreadyTransaction => _current.transactionId != null;
 
   @override
   void initState() {
     super.initState();
     final receipt = widget.receipt;
+    _current = receipt;
     _merchantController = TextEditingController(text: receipt.merchant ?? "");
     _totalController = TextEditingController(text: receipt.total == null ? "" : amountText(receipt.total!));
     _date = receipt.date;
     _categoryId = receipt.categoryId;
     _isFavorite = receipt.isFavorite;
+
+    // A new photo on a device that can read it: read it straight away
+    if (receipt.scanStatus == ReceiptScanStatus.waiting && ref.read(canScanHereProvider))
+    {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scan();
+      });
+    }
+  }
+
+  Future<void> _scan() async
+  {
+    setState(() => _isScanning = true);
+    final scanned = await ref.read(receiptScanServiceProvider).scan(_current);
+    if (!mounted) return;
+
+    setState(() {
+      _isScanning = false;
+      _current = scanned;
+      // Only fill what's still empty, the user may have started typing while it was reading
+      if (_merchantController.text.isEmpty && scanned.merchant != null) _merchantController.text = scanned.merchant!;
+      if (_totalController.text.isEmpty && scanned.total != null) _totalController.text = amountText(scanned.total!);
+      _date ??= scanned.date;
+      _categoryId ??= scanned.categoryId;
+    });
+  }
+
+  // The line under the photo that says whether the receipt has been read
+  Widget? _scanStatus(BuildContext context)
+  {
+    final bool canScanHere = ref.watch(canScanHereProvider);
+    final TextStyle? style = Theme.of(context).textTheme.bodyMedium;
+
+    Widget row(Widget icon, String text, {String? buttonLabel})
+    {
+      return Row(
+        key: const Key("scan_status"),
+        spacing: 10,
+        children: [
+          icon,
+          Expanded(child: Text(text, style: style)),
+          if (buttonLabel != null) TextButton(onPressed: _scan, child: Text(buttonLabel)),
+        ],
+      );
+    }
+
+    if (_isScanning)
+    {
+      return row(
+        const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+        "Reading the receipt...",
+      );
+    }
+
+    return switch (_current.scanStatus) {
+      ReceiptScanStatus.waiting when canScanHere =>
+        row(const Icon(Icons.document_scanner_outlined), "Not read yet", buttonLabel: "Scan now"),
+      ReceiptScanStatus.waiting =>
+        row(
+          const Icon(Icons.phone_android),
+          "Waiting for your phone to read this. Open the app on your phone and it's scanned there. "
+          "You can also fill it in yourself.",
+        ),
+      ReceiptScanStatus.scanned =>
+        row(const Icon(Icons.auto_awesome_outlined), "Filled in from the photo. Check it looks right."),
+      ReceiptScanStatus.failed =>
+        row(
+          const Icon(Icons.error_outline),
+          "Couldn't read this receipt. Fill it in yourself.",
+          buttonLabel: canScanHere ? "Try again" : null,
+        ),
+      ReceiptScanStatus.notScanned => null,
+    };
   }
 
   @override
@@ -77,14 +157,14 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     final merchant = _merchantController.text.trim();
 
     // NOTE: Each step returns the receipt as saved, and the next step builds on that copy
-    var saved = await actions.update(widget.receipt.copyWith(
+    var saved = await actions.update(_current.copyWith(
       merchant: Value(merchant.isEmpty ? null : merchant),
       total: Value(double.tryParse(_totalController.text)),
       date: Value(_date),
       categoryId: Value(_categoryId),
     ));
 
-    if (_isFavorite != widget.receipt.isFavorite)
+    if (_isFavorite != _current.isFavorite)
     {
       saved = await actions.setFavorite(saved, _isFavorite);
     }
@@ -113,6 +193,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final categories = ref.watch(activeCategoriesProvider).value ?? [];
+    final Widget? scanStatus = _scanStatus(context);
     final String? selectedCategoryId = categories.any((c) => c.id == _categoryId) ? _categoryId : null;
 
     return FormDialogScaffold(
@@ -131,6 +212,8 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
             ),
           ),
         ),
+
+        ?scanStatus,
 
         TextFormField(
           controller: _merchantController,

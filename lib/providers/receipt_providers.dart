@@ -10,7 +10,9 @@ import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-final receiptImageStoreProvider = Provider<ReceiptImageStore>((ref) => ReceiptImageStore.appDocuments());
+// NOTE: receiptImageStoreProvider moved to core_providers so the sync engine can use it.
+// Re-exported here so code that looks for it next to the other receipt providers still finds it
+export 'package:expense_tracker/providers/core_providers.dart' show receiptImageStoreProvider;
 
 final receiptImagePickerProvider = Provider<ReceiptImagePicker>((ref) => ReceiptImagePicker());
 
@@ -80,8 +82,10 @@ class ReceiptActions
     await _images.save(id, imageBytes);
     try
     {
+      // NOTE: Every new receipt waits for the scanner. On a phone that's a second away, on
+      // Windows it waits for the phone to sync and read it
       return await _db.into(_db.receipts).insertReturning(
-        ReceiptsCompanion.insert(id: Value(id), userId: userId),
+        ReceiptsCompanion.insert(id: Value(id), userId: userId, scanStatus: const Value(ReceiptScanStatus.waiting)),
       );
     }
     catch (e)

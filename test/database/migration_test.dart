@@ -111,6 +111,29 @@ void main()
     expect(await db.receiptsDao.getUnsynced("user-a"), hasLength(1));
 
     final version = await db.customSelect("PRAGMA user_version").getSingle();
-    expect(version.read<int>("user_version"), 4);
+    expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  test("upgrading a version 4 database adds image_uploaded to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    // A version 4 database: receipts without the image_uploaded column
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(userId: "user-a", merchant: const Value("Kept")));
+    await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN image_uploaded");
+    await oldDb.customStatement("PRAGMA user_version = 4");
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect(receipt.merchant, "Kept");
+    expect(receipt.imageUploaded, isFalse, reason: "existing photos haven't been uploaded yet");
+
+    final version = await db.customSelect("PRAGMA user_version").getSingle();
+    expect(version.read<int>("user_version"), db.schemaVersion);
   });
 }

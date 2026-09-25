@@ -123,6 +123,12 @@ class ReceiptCard extends StatelessWidget
                 fit: StackFit.expand,
                 children: [
                   ReceiptImage(receiptId: receipt.id),
+                  if (receipt.scanStatus == ReceiptScanStatus.waiting || receipt.scanStatus == ReceiptScanStatus.failed)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: _StatusBadge(status: receipt.scanStatus),
+                    ),
                   if (receipt.isFavorite)
                     const Positioned(
                       top: 6,
@@ -168,6 +174,33 @@ class ReceiptCard extends StatelessWidget
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// A small label on a card for receipts that haven't been read yet, or couldn't be
+class _StatusBadge extends StatelessWidget
+{
+  final ReceiptScanStatus status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool failed = status == ReceiptScanStatus.failed;
+
+    // NOTE: Dark translucent pill with white text, readable on any photo in either theme
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          Icon(failed ? Icons.error_outline : Icons.hourglass_top, size: 14, color: Colors.white),
+          Text(failed ? "Couldn't read" : "Waiting to scan", style: const TextStyle(color: Colors.white, fontSize: 11)),
+        ],
       ),
     );
   }

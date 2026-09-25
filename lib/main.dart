@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:win32_registry/win32_registry.dart';
+import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/screens/auth_gate.dart';
 import 'package:expense_tracker/theme/money_colors.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async{
@@ -23,8 +25,12 @@ void main() async{
   );
   
   // await signInTestUser();
+  // NOTE: Loaded before the app starts so settings can be read without waiting
+  final preferences = await SharedPreferences.getInstance();
+
   runApp(
     ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
       child: TransactionApp()
     )
   );

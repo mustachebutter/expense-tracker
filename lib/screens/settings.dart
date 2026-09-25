@@ -10,6 +10,7 @@ import 'package:expense_tracker/widgets/forms/form_helpers.dart';
 import 'package:expense_tracker/widgets/forms/investment_form_dialog.dart';
 import 'package:expense_tracker/widgets/forms/savings_goal_form_dialog.dart';
 import 'package:expense_tracker/widgets/forms/template_form_dialog.dart';
+import 'package:expense_tracker/widgets/receipts/receipt_scanning_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -251,6 +252,10 @@ class Settings extends ConsumerWidget {
                     ),
                     titleLabel: "Investments",
                   ),
+
+                  SizedBox(height: 20),
+
+                  const ReceiptScanningSettings(),
                 ],
               ),
             ],

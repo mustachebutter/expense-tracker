@@ -1,6 +1,8 @@
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/screens/settings.dart';
+import 'package:expense_tracker/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/pump_app.dart';
@@ -49,7 +51,17 @@ void main()
       await tester.enterText(find.widgetWithText(TextFormField, "Category Name"), "Salary");
       await tester.tap(find.text("Income"));
       await tester.tap(find.byKey(const Key("icon_attach_money")));
-      await tester.tap(find.byKey(const Key("color_2196F3")));
+
+      // Pick a color: open the picker, tap near the bottom right of the color area
+      // (a dark, saturated shade), then Select
+      await tester.tap(find.byKey(const Key("category_color")));
+      await tester.pumpAndSettle();
+      expect(find.text("Pick a color"), findsOneWidget);
+      await tester.tapAt(tester.getBottomRight(find.byType(ColorPickerArea)) - const Offset(10, 10));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Select"));
+      await tester.pumpAndSettle();
+
       await tapSave(tester);
 
       expect(find.byType(AlertDialog), findsNothing, reason: "the dialog closes after saving");
@@ -58,8 +70,23 @@ void main()
       final saved = (await db.categoriesDao.getAll()).single;
       expect(saved.type, TransactionType.income);
       expect(saved.iconKey, "attach_money");
-      expect(saved.colorHex, "2196F3");
+      expect(saved.colorHex, isNot(AppConstants.defaultCategoryColorHex));
+      expect(saved.colorHex, matches(RegExp(r"^[0-9A-F]{6}$")), reason: "saved as 6 hex digits, no alpha");
       expect(saved.userId, userA);
+    });
+
+    testWidgets("cancelling the color picker keeps the old color", (tester) async {
+      await openSettings(tester);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, "Add Category"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("category_color")));
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getBottomRight(find.byType(ColorPickerArea)) - const Offset(10, 10));
+      await tester.tap(find.widgetWithText(TextButton, "Cancel").last);
+      await tester.pumpAndSettle();
+
+      expect(find.text("#${AppConstants.defaultCategoryColorHex}"), findsOneWidget);
     });
 
     testWidgets("a name is required", (tester) async {

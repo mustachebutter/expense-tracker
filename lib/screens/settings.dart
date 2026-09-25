@@ -102,7 +102,10 @@ class Settings extends ConsumerWidget {
                               color: AppConstants.getColorFromHex(item.colorHex),
                               shape: BoxShape.circle,
                             ),
-                            child: AppConstants.getIcon(item.iconKey),
+                            child: AppConstants.getIcon(
+                              item.iconKey,
+                              color: AppConstants.onColor(AppConstants.getColorFromHex(item.colorHex)),
+                            ),
                           ),
 
                           title: Text(item.name),

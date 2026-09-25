@@ -2,6 +2,7 @@ import 'package:expense_tracker/daos/transactions_dao.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/extensions/number.dart';
 import 'package:expense_tracker/main.dart';
+import 'package:expense_tracker/theme/money_colors.dart';
 import 'package:expense_tracker/widgets/forms/template_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -58,7 +59,9 @@ class LedgerList extends StatelessWidget
     final TextTheme textStyle = Theme.of(context).textTheme;
     final Brightness brightness = Theme.of(context).brightness;
     final Color variableTextColor = brightness == Brightness.light ? Colors.grey : Colors.blueGrey;
-    final Color variableAmountTextColor = brightness == Brightness.light ? Colors.black : Colors.white;
+    // Green / red in the shade that's readable on the current theme
+    final MoneyColors money = MoneyColors.of(context);
+    final double cashFlow = totalIncome() - totalTransaction();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,9 +91,10 @@ class LedgerList extends StatelessWidget
                         mainAxisAlignment: isMobile ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
                         spacing: isMobile ? 5 : 10,
                         children: [
-                          _buildStatBlock("Income: ", totalIncome(), variableTextColor, variableAmountTextColor, isMobile, textStyle),
-                          _buildStatBlock("Transactions: ", totalTransaction(), variableTextColor, variableAmountTextColor, isMobile, textStyle),
-                          _buildStatBlock("Cash Flow: ", (totalIncome() - totalTransaction()), Colors.green, Colors.green, isMobile, textStyle),
+                          _buildStatBlock("Income: ", totalIncome(), variableTextColor, money.income, isMobile, textStyle),
+                          _buildStatBlock("Transactions: ", totalTransaction(), variableTextColor, money.expense, isMobile, textStyle),
+                          // NOTE: Cash flow is green while you're earning more than you spend, red once you're not
+                          _buildStatBlock("Cash Flow: ", cashFlow, variableTextColor, money.forBalance(cashFlow), isMobile, textStyle),
                         ],
                       )
                     );
@@ -148,7 +152,10 @@ class LedgerList extends StatelessWidget
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text("\$${item.expense.amount.toStringAsFixed(2)}", style: textStyle.labelLarge!.copyWith(fontWeight: FontWeight.bold),),
+                                        Text(
+                                          signedAmount(item.expense.amount, item.expense.type),
+                                          style: textStyle.labelLarge!.copyWith(fontWeight: FontWeight.bold, color: money.forType(item.expense.type)),
+                                        ),
                                         const SizedBox(width: 16,),
                                         IconButton(
                                           onPressed: () => onDelete(item.expense.id),
@@ -211,7 +218,12 @@ class LedgerList extends StatelessWidget
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerRight,
-                                  child: Text("\$${expense.amount.toStringAsFixed(2)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),),
+                                  // NOTE: Colored by type, not by section: filtering by an income
+                                  // category shows income rows in this list too
+                                  child: Text(
+                                    signedAmount(expense.amount, expense.type),
+                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: money.forType(expense.type)),
+                                  ),
                                 ),
                               ),
                               IconButton( 

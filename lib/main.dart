@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:win32_registry/win32_registry.dart';
 import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/screens/auth_gate.dart';
+import 'package:expense_tracker/theme/money_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -91,25 +92,49 @@ class AppConstants {
     "shopping_bag": Icons.shopping_bag,
     "electric_bolt": Icons.electric_bolt,
     "health_cross": Symbols.health_cross,
+    "home": Icons.home,
+    "local_grocery_store": Icons.local_grocery_store,
+    "directions_car": Icons.directions_car,
+    "local_gas_station": Icons.local_gas_station,
+    "flight": Icons.flight,
+    "school": Icons.school,
+    "pets": Icons.pets,
+    "fitness_center": Icons.fitness_center,
+    "local_cafe": Icons.local_cafe,
+    "card_giftcard": Icons.card_giftcard,
+    "smartphone": Icons.smartphone,
+    "savings": Icons.savings,
+    // NOTE: Keep "more_horiz" last, it's the catch-all at the end of the icon picker
     "more_horiz": Symbols.more_horiz,
   };
 
   // Every icon a category can use, for the icon picker in the category form
   static List<String> get iconKeys => _iconMap.keys.toList();
 
-  // Colors offered in the category form, stored on the category as a hex string
-  static const List<String> categoryColorHexes = [
-    "4CAF50", "2196F3", "F44336", "FF9800", "9C27B0", "009688", "795548", "607D8B",
-  ];
+  // A new category starts with this color until the user picks another one
+  static const String defaultCategoryColorHex = "4CAF50";
 
-  static Icon getIcon(String key)
+  static Icon getIcon(String key, {Color? color})
   {
-    return Icon(_iconMap[key] ?? Icons.help_outline);
+    return Icon(_iconMap[key] ?? Icons.help_outline, color: color);
   }
 
   static Color getColorFromHex(String colorHex)
   {
     return Color(int.parse("FF${colorHex.toUpperCase()}", radix: 16));
+  }
+
+  // The opposite of getColorFromHex: Color(0xFF4CAF50) -> "4CAF50" (alpha dropped)
+  static String colorToHex(Color color)
+  {
+    return (color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, "0").toUpperCase();
+  }
+
+  // Black or white, whichever is readable on top of [background]. Used for a category's
+  // icon on its colored circle, since the user can pick any color, light or dark
+  static Color onColor(Color background)
+  {
+    return ThemeData.estimateBrightnessForColor(background) == Brightness.dark ? Colors.white : Colors.black;
   }
 
   static const Color primaryBlue = Color(0xFF0D47A1);
@@ -125,6 +150,7 @@ class TransactionApp extends ConsumerWidget {
     ),
     useMaterial3: true,
     brightness: Brightness.light,
+    extensions: const [MoneyColors.light],
     colorScheme: ColorScheme.light(
       primary: Colors.white,
       secondary:Color(0xFFF5F5F5),
@@ -215,6 +241,7 @@ class TransactionApp extends ConsumerWidget {
     ),
     useMaterial3: true,
     brightness: Brightness.dark,
+    extensions: const [MoneyColors.dark],
     colorScheme: ColorScheme.dark(
       primary: Color(0xFF1E1E1E),
       secondary:Color(0xFF1A1A1A),

@@ -1,10 +1,16 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'dart:ui' show Offset, Size;
+
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
+import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/services/receipt_scanner.dart';
+
+import 'package:image/image.dart' as img;
 
 import 'test_database.dart';
 
@@ -29,8 +35,29 @@ class FakeReceiptImageStore extends ReceiptImageStore
   @override
   Future<bool> exists(String receiptId) async => images.containsKey(receiptId);
 
+  // Cropped copies, keyed "<receipt id>/<crop key>"
+  final Map<String, Uint8List> croppedImages = {};
+
   @override
-  Future<void> delete(String receiptId) async => images.remove(receiptId);
+  Future<File> croppedFileFor(String receiptId, String cropKey) async
+  {
+    return File("${Directory.systemTemp.path}/${receiptId}_crop_$cropKey.jpg");
+  }
+
+  @override
+  Future<File> saveCropped(String receiptId, String cropKey, Uint8List bytes) async
+  {
+    croppedImages.removeWhere((key, _) => key.startsWith("$receiptId/"));
+    croppedImages["$receiptId/$cropKey"] = bytes;
+    return croppedFileFor(receiptId, cropKey);
+  }
+
+  @override
+  Future<void> delete(String receiptId) async
+  {
+    images.remove(receiptId);
+    croppedImages.removeWhere((key, _) => key.startsWith("$receiptId/"));
+  }
 }
 
 // Pretends the user picked [nextImage] (or cancelled, if it's null)
@@ -112,3 +139,28 @@ class FakeReceiptScanner implements ReceiptScanner
     return quarterTurns == 0 ? rows : const [];
   }
 }
+
+// Crops without decoding real photos. [detected] is what "auto-detect" finds (null: nothing)
+class FakeReceiptCropper implements ReceiptCropper
+{
+  ReceiptCorners? detected;
+  final List<ReceiptCorners> renderedCorners = [];
+
+  FakeReceiptCropper({this.detected});
+
+  @override
+  Future<CropEditorImage> prepare(Uint8List photo, int quarterTurns) async
+  {
+    // A real (tiny) image, so the editor has something it can show
+    return (preview: img.encodePng(img.Image(width: 3, height: 4)), size: const Size(300, 400), detected: detected);
+  }
+
+  @override
+  Future<Uint8List> render(Uint8List photo, int quarterTurns, ReceiptCorners corners) async
+  {
+    renderedCorners.add(corners);
+    return Uint8List.fromList([7, 7, 7]);
+  }
+}
+
+const ReceiptCorners sampleCorners = [Offset(0.1, 0.1), Offset(0.9, 0.1), Offset(0.9, 0.9), Offset(0.1, 0.9)];

@@ -74,6 +74,7 @@ void main()
       transactionId: const Value("tx-1"),
       imageQuarterTurns: 3,
       splitPeople: const Value(4),
+      cropCorners: const Value("0.1000,0.1000,0.9000,0.1000,0.9000,0.9000,0.1000,0.9000"),
     ));
     final customSplit = await insertReceipt(pcDb, total: 20);
     await pcDb.receiptsDao.updateRow(customSplit.copyWith(splitAmount: const Value(7.5)));
@@ -89,6 +90,7 @@ void main()
     expect((fullOnPhone.isFavorite, fullOnPhone.boardX, fullOnPhone.boardY, fullOnPhone.boardZ), (true, 120.0, 340.0, 7));
     expect(fullOnPhone.scanStatus, ReceiptScanStatus.scanned);
     expect((fullOnPhone.imageQuarterTurns, fullOnPhone.splitPeople, fullOnPhone.splitAmount), (3, 4, null));
+    expect(fullOnPhone.cropCorners, "0.1000,0.1000,0.9000,0.1000,0.9000,0.9000,0.1000,0.9000");
     expect((await getReceipt(phoneDb, customSplit.id)).splitAmount, 7.5);
     expect(fullOnPhone.createdAt, full.createdAt);
 

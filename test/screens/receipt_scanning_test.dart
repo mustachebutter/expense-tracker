@@ -6,6 +6,7 @@ import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/screens/receipts.dart';
 import 'package:expense_tracker/screens/settings.dart';
+import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_list_view.dart';
 import 'package:flutter/material.dart';
@@ -226,5 +227,121 @@ void main()
     await tester.pumpAndSettle();
 
     expect(picker.requestedSources, [ReceiptImageSource.documentScanner]);
+  });
+
+  group("cutting the receipt out of the photo", () {
+    Future<void> openWith(WidgetTester tester, {FakeReceiptCropper? cropper, FakeReceiptImagePicker? picker}) async
+    {
+      await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos,
+        receiptPicker: picker ?? FakeReceiptImagePicker(),
+        receiptScanner: FakeReceiptScanner(isAvailable: false),
+        receiptCropper: cropper ?? FakeReceiptCropper());
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("an imported photo is cropped to the receipt when its edges are clear", (tester) async {
+      await openWith(tester, cropper: FakeReceiptCropper(detected: sampleCorners));
+
+      await importReceipt(tester);
+
+      expect((await db.receiptsDao.getAll()).single.cropCorners, encodeCorners(sampleCorners));
+    });
+
+    testWidgets("an imported photo with no clear receipt keeps the whole photo", (tester) async {
+      await openWith(tester);
+
+      await importReceipt(tester);
+
+      expect((await db.receiptsDao.getAll()).single.cropCorners, isNull);
+    });
+
+    testWidgets("document scanner photos aren't cropped again", (tester) async {
+      await openWith(tester,
+        cropper: FakeReceiptCropper(detected: sampleCorners),
+        picker: FakeReceiptImagePicker(canUseCamera: true, canScanDocuments: true));
+
+      await tester.tap(find.text("Add receipt"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Scan receipt"));
+      await tester.pumpAndSettle();
+
+      expect((await db.receiptsDao.getAll()).single.cropCorners, isNull);
+    });
+
+    Future<Receipt> receiptWithPhoto(String merchant) async
+    {
+      final receipt = await insertReceipt(db, merchant: merchant);
+      await photos.save(receipt.id, Uint8List.fromList([1]));
+      return receipt;
+    }
+
+    Future<void> openCropEditor(WidgetTester tester, String merchant) async
+    {
+      await tester.tap(find.widgetWithText(ReceiptCard, merchant));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip("Crop out the background"));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("the crop editor starts on the detected edges, corners can be dragged, Done saves", (tester) async {
+      await receiptWithPhoto("Tesco");
+      await openWith(tester, cropper: FakeReceiptCropper(detected: sampleCorners));
+      await openCropEditor(tester, "Tesco");
+
+      expect(find.text("Crop receipt"), findsOneWidget);
+      expect(find.text("Drag the corners onto the receipt's edges."), findsOneWidget);
+
+      await tester.drag(find.byKey(const Key("crop_corner_0")), const Offset(-500, -500));
+      await tester.tap(find.text("Done"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+
+      final corners = decodeCorners((await db.receiptsDao.getAll()).single.cropCorners)!;
+      expect(corners[0], Offset.zero, reason: "dragged all the way to the photo's top-left, and no further");
+      expect(corners.sublist(1), sampleCorners.sublist(1), reason: "the other corners stayed put");
+    });
+
+    testWidgets("Whole photo undoes the crop", (tester) async {
+      final receipt = await receiptWithPhoto("Tesco");
+      await db.receiptsDao.updateRow(receipt.copyWith(cropCorners: Value(encodeCorners(sampleCorners))));
+      await openWith(tester);
+      await openCropEditor(tester, "Tesco");
+
+      await tester.tap(find.text("Whole photo"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+
+      expect((await db.receiptsDao.getAll()).single.cropCorners, isNull);
+    });
+
+    testWidgets("says so when it couldn't find the receipt's edges", (tester) async {
+      await receiptWithPhoto("Tesco");
+      await openWith(tester);
+      await openCropEditor(tester, "Tesco");
+
+      expect(find.textContaining("Couldn't find the receipt's edges"), findsOneWidget);
+      expect(find.text("Auto-detect"), findsNothing);
+    });
+
+    testWidgets("rotating a cropped photo turns the crop with it", (tester) async {
+      // A crop covering the left half of the photo
+      const leftHalf = [Offset(0, 0), Offset(0.5, 0), Offset(0.5, 1), Offset(0, 1)];
+      final receipt = await receiptWithPhoto("Tesco");
+      await db.receiptsDao.updateRow(receipt.copyWith(cropCorners: Value(encodeCorners(leftHalf))));
+      await openWith(tester);
+
+      await tester.tap(find.widgetWithText(ReceiptCard, "Tesco"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip("Rotate photo"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect(saved.imageQuarterTurns, 1);
+      expect(decodeCorners(saved.cropCorners), rotateCornersClockwise(leftHalf));
+    });
   });
 }

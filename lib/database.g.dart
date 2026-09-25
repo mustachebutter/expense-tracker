@@ -3375,6 +3375,17 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _cropCornersMeta = const VerificationMeta(
+    'cropCorners',
+  );
+  @override
+  late final GeneratedColumn<String> cropCorners = GeneratedColumn<String>(
+    'crop_corners',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _splitPeopleMeta = const VerificationMeta(
     'splitPeople',
   );
@@ -3506,6 +3517,7 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     scanStatus,
     imageUploaded,
     imageQuarterTurns,
+    cropCorners,
     splitPeople,
     splitAmount,
     isFavorite,
@@ -3588,6 +3600,15 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         imageQuarterTurns.isAcceptableOrUnknown(
           data['image_quarter_turns']!,
           _imageQuarterTurnsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('crop_corners')) {
+      context.handle(
+        _cropCornersMeta,
+        cropCorners.isAcceptableOrUnknown(
+          data['crop_corners']!,
+          _cropCornersMeta,
         ),
       );
     }
@@ -3708,6 +3729,10 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.int,
         data['${effectivePrefix}image_quarter_turns'],
       )!,
+      cropCorners: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}crop_corners'],
+      ),
       splitPeople: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}split_people'],
@@ -3771,6 +3796,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final ReceiptScanStatus scanStatus;
   final bool imageUploaded;
   final int imageQuarterTurns;
+  final String? cropCorners;
   final int? splitPeople;
   final double? splitAmount;
   final bool isFavorite;
@@ -3792,6 +3818,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     required this.scanStatus,
     required this.imageUploaded,
     required this.imageQuarterTurns,
+    this.cropCorners,
     this.splitPeople,
     this.splitAmount,
     required this.isFavorite,
@@ -3830,6 +3857,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     }
     map['image_uploaded'] = Variable<bool>(imageUploaded);
     map['image_quarter_turns'] = Variable<int>(imageQuarterTurns);
+    if (!nullToAbsent || cropCorners != null) {
+      map['crop_corners'] = Variable<String>(cropCorners);
+    }
     if (!nullToAbsent || splitPeople != null) {
       map['split_people'] = Variable<int>(splitPeople);
     }
@@ -3871,6 +3901,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       scanStatus: Value(scanStatus),
       imageUploaded: Value(imageUploaded),
       imageQuarterTurns: Value(imageQuarterTurns),
+      cropCorners: cropCorners == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cropCorners),
       splitPeople: splitPeople == null && nullToAbsent
           ? const Value.absent()
           : Value(splitPeople),
@@ -3910,6 +3943,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       ),
       imageUploaded: serializer.fromJson<bool>(json['imageUploaded']),
       imageQuarterTurns: serializer.fromJson<int>(json['imageQuarterTurns']),
+      cropCorners: serializer.fromJson<String?>(json['cropCorners']),
       splitPeople: serializer.fromJson<int?>(json['splitPeople']),
       splitAmount: serializer.fromJson<double?>(json['splitAmount']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
@@ -3938,6 +3972,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       ),
       'imageUploaded': serializer.toJson<bool>(imageUploaded),
       'imageQuarterTurns': serializer.toJson<int>(imageQuarterTurns),
+      'cropCorners': serializer.toJson<String?>(cropCorners),
       'splitPeople': serializer.toJson<int?>(splitPeople),
       'splitAmount': serializer.toJson<double?>(splitAmount),
       'isFavorite': serializer.toJson<bool>(isFavorite),
@@ -3962,6 +3997,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     ReceiptScanStatus? scanStatus,
     bool? imageUploaded,
     int? imageQuarterTurns,
+    Value<String?> cropCorners = const Value.absent(),
     Value<int?> splitPeople = const Value.absent(),
     Value<double?> splitAmount = const Value.absent(),
     bool? isFavorite,
@@ -3985,6 +4021,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     scanStatus: scanStatus ?? this.scanStatus,
     imageUploaded: imageUploaded ?? this.imageUploaded,
     imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+    cropCorners: cropCorners.present ? cropCorners.value : this.cropCorners,
     splitPeople: splitPeople.present ? splitPeople.value : this.splitPeople,
     splitAmount: splitAmount.present ? splitAmount.value : this.splitAmount,
     isFavorite: isFavorite ?? this.isFavorite,
@@ -4018,6 +4055,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       imageQuarterTurns: data.imageQuarterTurns.present
           ? data.imageQuarterTurns.value
           : this.imageQuarterTurns,
+      cropCorners: data.cropCorners.present
+          ? data.cropCorners.value
+          : this.cropCorners,
       splitPeople: data.splitPeople.present
           ? data.splitPeople.value
           : this.splitPeople,
@@ -4050,6 +4090,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('scanStatus: $scanStatus, ')
           ..write('imageUploaded: $imageUploaded, ')
           ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('cropCorners: $cropCorners, ')
           ..write('splitPeople: $splitPeople, ')
           ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
@@ -4065,7 +4106,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     userId,
     merchant,
@@ -4076,6 +4117,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     scanStatus,
     imageUploaded,
     imageQuarterTurns,
+    cropCorners,
     splitPeople,
     splitAmount,
     isFavorite,
@@ -4086,7 +4128,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     isSynced,
     isDeleted,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4101,6 +4143,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.scanStatus == this.scanStatus &&
           other.imageUploaded == this.imageUploaded &&
           other.imageQuarterTurns == this.imageQuarterTurns &&
+          other.cropCorners == this.cropCorners &&
           other.splitPeople == this.splitPeople &&
           other.splitAmount == this.splitAmount &&
           other.isFavorite == this.isFavorite &&
@@ -4124,6 +4167,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<ReceiptScanStatus> scanStatus;
   final Value<bool> imageUploaded;
   final Value<int> imageQuarterTurns;
+  final Value<String?> cropCorners;
   final Value<int?> splitPeople;
   final Value<double?> splitAmount;
   final Value<bool> isFavorite;
@@ -4146,6 +4190,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.scanStatus = const Value.absent(),
     this.imageUploaded = const Value.absent(),
     this.imageQuarterTurns = const Value.absent(),
+    this.cropCorners = const Value.absent(),
     this.splitPeople = const Value.absent(),
     this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
@@ -4169,6 +4214,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.scanStatus = const Value.absent(),
     this.imageUploaded = const Value.absent(),
     this.imageQuarterTurns = const Value.absent(),
+    this.cropCorners = const Value.absent(),
     this.splitPeople = const Value.absent(),
     this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
@@ -4192,6 +4238,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<int>? scanStatus,
     Expression<bool>? imageUploaded,
     Expression<int>? imageQuarterTurns,
+    Expression<String>? cropCorners,
     Expression<int>? splitPeople,
     Expression<double>? splitAmount,
     Expression<bool>? isFavorite,
@@ -4215,6 +4262,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (scanStatus != null) 'scan_status': scanStatus,
       if (imageUploaded != null) 'image_uploaded': imageUploaded,
       if (imageQuarterTurns != null) 'image_quarter_turns': imageQuarterTurns,
+      if (cropCorners != null) 'crop_corners': cropCorners,
       if (splitPeople != null) 'split_people': splitPeople,
       if (splitAmount != null) 'split_amount': splitAmount,
       if (isFavorite != null) 'is_favorite': isFavorite,
@@ -4240,6 +4288,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<ReceiptScanStatus>? scanStatus,
     Value<bool>? imageUploaded,
     Value<int>? imageQuarterTurns,
+    Value<String?>? cropCorners,
     Value<int?>? splitPeople,
     Value<double?>? splitAmount,
     Value<bool>? isFavorite,
@@ -4263,6 +4312,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       scanStatus: scanStatus ?? this.scanStatus,
       imageUploaded: imageUploaded ?? this.imageUploaded,
       imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+      cropCorners: cropCorners ?? this.cropCorners,
       splitPeople: splitPeople ?? this.splitPeople,
       splitAmount: splitAmount ?? this.splitAmount,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -4311,6 +4361,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     }
     if (imageQuarterTurns.present) {
       map['image_quarter_turns'] = Variable<int>(imageQuarterTurns.value);
+    }
+    if (cropCorners.present) {
+      map['crop_corners'] = Variable<String>(cropCorners.value);
     }
     if (splitPeople.present) {
       map['split_people'] = Variable<int>(splitPeople.value);
@@ -4361,6 +4414,7 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('scanStatus: $scanStatus, ')
           ..write('imageUploaded: $imageUploaded, ')
           ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('cropCorners: $cropCorners, ')
           ..write('splitPeople: $splitPeople, ')
           ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
@@ -6869,6 +6923,7 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       Value<ReceiptScanStatus> scanStatus,
       Value<bool> imageUploaded,
       Value<int> imageQuarterTurns,
+      Value<String?> cropCorners,
       Value<int?> splitPeople,
       Value<double?> splitAmount,
       Value<bool> isFavorite,
@@ -6893,6 +6948,7 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<ReceiptScanStatus> scanStatus,
       Value<bool> imageUploaded,
       Value<int> imageQuarterTurns,
+      Value<String?> cropCorners,
       Value<int?> splitPeople,
       Value<double?> splitAmount,
       Value<bool> isFavorite,
@@ -6992,6 +7048,11 @@ class $$ReceiptsTableFilterComposer
 
   ColumnFilters<int> get imageQuarterTurns => $composableBuilder(
     column: $table.imageQuarterTurns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7141,6 +7202,11 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get splitPeople => $composableBuilder(
     column: $table.splitPeople,
     builder: (column) => ColumnOrderings(column),
@@ -7278,6 +7344,11 @@ class $$ReceiptsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get splitPeople => $composableBuilder(
     column: $table.splitPeople,
     builder: (column) => column,
@@ -7399,6 +7470,7 @@ class $$ReceiptsTableTableManager
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
                 Value<bool> imageUploaded = const Value.absent(),
                 Value<int> imageQuarterTurns = const Value.absent(),
+                Value<String?> cropCorners = const Value.absent(),
                 Value<int?> splitPeople = const Value.absent(),
                 Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
@@ -7421,6 +7493,7 @@ class $$ReceiptsTableTableManager
                 scanStatus: scanStatus,
                 imageUploaded: imageUploaded,
                 imageQuarterTurns: imageQuarterTurns,
+                cropCorners: cropCorners,
                 splitPeople: splitPeople,
                 splitAmount: splitAmount,
                 isFavorite: isFavorite,
@@ -7445,6 +7518,7 @@ class $$ReceiptsTableTableManager
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
                 Value<bool> imageUploaded = const Value.absent(),
                 Value<int> imageQuarterTurns = const Value.absent(),
+                Value<String?> cropCorners = const Value.absent(),
                 Value<int?> splitPeople = const Value.absent(),
                 Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
@@ -7467,6 +7541,7 @@ class $$ReceiptsTableTableManager
                 scanStatus: scanStatus,
                 imageUploaded: imageUploaded,
                 imageQuarterTurns: imageQuarterTurns,
+                cropCorners: cropCorners,
                 splitPeople: splitPeople,
                 splitAmount: splitAmount,
                 isFavorite: isFavorite,

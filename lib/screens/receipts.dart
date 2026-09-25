@@ -1,4 +1,7 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
+import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_board_view.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_form_dialog.dart';
@@ -49,7 +52,27 @@ class ReceiptsScreen extends ConsumerWidget
     final bytes = await picker.pick(source);
     if (bytes == null) return;
 
-    final receipt = await ref.read(receiptActionsProvider).addFromImage(bytes);
+    final actions = ref.read(receiptActionsProvider);
+    var receipt = await actions.addFromImage(bytes);
+
+    // NOTE: The document scanner already cropped its photos. Anything else (the gallery, a
+    // plain photo, a file on Windows) is cropped to the receipt if its edges are clear. The
+    // original is kept, so the crop button in the receipt can adjust or undo this
+    if (source != ReceiptImageSource.documentScanner)
+    {
+      try
+      {
+        final detected = (await ref.read(receiptCropperProvider).prepare(bytes, 0)).detected;
+        if (detected != null)
+        {
+          receipt = await actions.update(receipt.copyWith(cropCorners: Value(encodeCorners(detected))));
+        }
+      }
+      catch (e)
+      {
+        print("Couldn't look for the receipt's edges: $e");
+      }
+    }
 
     // Straight into the details, while the receipt is still in hand
     if (context.mounted) await showReceiptFormDialog(context, receipt);

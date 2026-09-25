@@ -216,7 +216,11 @@ class _BoardCard extends StatelessWidget
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(11),
-                        child: ReceiptImage(receiptId: receipt.id, quarterTurns: receipt.imageQuarterTurns),
+                        child: ReceiptImage(
+                          receiptId: receipt.id,
+                          quarterTurns: receipt.imageQuarterTurns,
+                          cropCorners: receipt.cropCorners,
+                        ),
                       ),
                     ),
                   ),

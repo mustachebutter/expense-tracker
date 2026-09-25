@@ -2,9 +2,12 @@ import 'package:drift/drift.dart' show Value;
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/main.dart';
 import 'package:expense_tracker/providers/category_providers.dart';
+import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/receipt_scan_providers.dart';
+import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/widgets/forms/form_helpers.dart';
+import 'package:expense_tracker/widgets/receipts/receipt_crop_editor.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +46,8 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   String? _categoryId;
   late bool _isFavorite;
   late int _quarterTurns;
+  // Where the receipt is in the photo (encoded corners), null for the whole photo
+  String? _cropCorners;
   bool _addAsTransaction = false;
   bool _isScanning = false;
 
@@ -69,6 +74,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _categoryId = receipt.categoryId;
     _isFavorite = receipt.isFavorite;
     _quarterTurns = receipt.imageQuarterTurns;
+    _cropCorners = receipt.cropCorners;
     _isSplit = receipt.isSplit;
     _splitEqually = receipt.splitAmount == null;
     _splitPeople = receipt.splitPeople ?? 2;
@@ -97,7 +103,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     setState(() => _isScanning = true);
     // NOTE: Starts from the way the photo is shown now, including a rotation not saved yet
     final scanned = await ref.read(receiptScanServiceProvider).scan(
-      _current.copyWith(imageQuarterTurns: _quarterTurns),
+      _current.copyWith(imageQuarterTurns: _quarterTurns, cropCorners: Value(_cropCorners)),
       replaceExisting: replace,
     );
     if (!mounted) return;
@@ -107,6 +113,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       _current = scanned;
       // The scanner may have turned the photo upright to read it
       _quarterTurns = scanned.imageQuarterTurns;
+      _cropCorners = scanned.cropCorners;
 
       void fill(TextEditingController controller, String? value)
       {
@@ -181,6 +188,38 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     };
   }
 
+  // A quarter turn clockwise. A crop turns with the photo, so it stays on the receipt
+  void _rotate()
+  {
+    setState(() {
+      _quarterTurns = (_quarterTurns + 1) % 4;
+      final corners = decodeCorners(_cropCorners);
+      if (corners != null) _cropCorners = encodeCorners(rotateCornersClockwise(corners));
+    });
+  }
+
+  Future<void> _crop() async
+  {
+    final photo = await ref.read(receiptImageStoreProvider).read(widget.receipt.id);
+    if (!mounted) return;
+    if (photo == null)
+    {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("The photo isn't on this device yet, it arrives with the next sync")),
+      );
+      return;
+    }
+
+    final choice = await showReceiptCropEditor(
+      context,
+      photo: photo,
+      quarterTurns: _quarterTurns,
+      current: decodeCorners(_cropCorners),
+    );
+    if (choice == null || !mounted) return;
+    setState(() => _cropCorners = choice.corners == null ? null : encodeCorners(choice.corners!));
+  }
+
   Future<void> _pickDate() async
   {
     final picked = await showDatePicker(
@@ -204,6 +243,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       date: Value(_date),
       categoryId: Value(_categoryId),
       imageQuarterTurns: _quarterTurns,
+      cropCorners: Value(_cropCorners),
       splitPeople: Value(_isSplit && _splitEqually ? _splitPeople : null),
       splitAmount: Value(_isSplit && !_splitEqually ? double.tryParse(_shareController.text) : null),
     ));
@@ -315,17 +355,33 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
               children: [
                 InteractiveViewer(
                   maxScale: 5,
-                  child: ReceiptImage(receiptId: widget.receipt.id, fit: BoxFit.contain, quarterTurns: _quarterTurns),
+                  child: ReceiptImage(
+                    receiptId: widget.receipt.id,
+                    fit: BoxFit.contain,
+                    quarterTurns: _quarterTurns,
+                    cropCorners: _cropCorners,
+                  ),
                 ),
                 Positioned(
                   right: 8,
                   bottom: 8,
-                  // NOTE: Dark translucent circle with a white icon, readable on any photo
-                  child: IconButton(
-                    tooltip: "Rotate photo",
-                    style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
-                    onPressed: () => setState(() => _quarterTurns = (_quarterTurns + 1) % 4),
-                    icon: const Icon(Icons.rotate_right),
+                  // NOTE: Dark translucent circles with white icons, readable on any photo
+                  child: Row(
+                    spacing: 8,
+                    children: [
+                      IconButton(
+                        tooltip: "Crop out the background",
+                        style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
+                        onPressed: _crop,
+                        icon: const Icon(Icons.crop),
+                      ),
+                      IconButton(
+                        tooltip: "Rotate photo",
+                        style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
+                        onPressed: _rotate,
+                        icon: const Icon(Icons.rotate_right),
+                      ),
+                    ],
                   ),
                 ),
               ],

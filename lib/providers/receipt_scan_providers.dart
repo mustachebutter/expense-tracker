@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/services/receipt_scanner.dart';
@@ -84,8 +85,20 @@ class ReceiptScanService
   Future<Receipt> scan(Receipt receipt, {bool replaceExisting = false}) async
   {
     final userId = _ref.requireUserId();
-    final file = await _ref.read(receiptImageStoreProvider).fileFor(receipt.id);
-    final reading = await _readBestWayUp(file, receipt.imageQuarterTurns);
+    final store = _ref.read(receiptImageStoreProvider);
+
+    // NOTE: A cropped receipt is read from its cropped copy (already upright, no background),
+    // and isn't tried other ways round: the crop already says which way up it goes
+    final cropped = receipt.cropCorners == null ? null : await croppedReceiptFile(
+      store,
+      _ref.read(receiptCropperProvider),
+      receiptId: receipt.id,
+      quarterTurns: receipt.imageQuarterTurns,
+      cropCorners: receipt.cropCorners!,
+    );
+    final reading = cropped != null
+      ? (parsed: await _read(cropped, 0), quarterTurns: receipt.imageQuarterTurns)
+      : await _readBestWayUp(await store.fileFor(receipt.id), receipt.imageQuarterTurns);
     final parsed = reading.parsed;
 
     // NOTE: Scanning takes a moment, so start from the receipt as it is NOW. If the user
@@ -109,7 +122,10 @@ class ReceiptScanService
       total: Value(pick(latest.total, parsed.total)),
       date: Value(pick(latest.date, parsed.date)),
       categoryId: Value(categoryId),
+      // NOTE: Saved as a pair: the crop corners only make sense with the rotation they were
+      // drawn on, so keep the two that were actually read together
       imageQuarterTurns: reading.quarterTurns,
+      cropCorners: Value(receipt.cropCorners),
       scanStatus: ReceiptScanStatus.scanned,
     ));
   }

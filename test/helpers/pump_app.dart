@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/receipt_scan_providers.dart';
 import 'package:expense_tracker/providers/settings_providers.dart';
@@ -56,6 +57,7 @@ Future<void> pumpApp(
   Stream<bool>? connectivity,
   FakeReceiptImageStore? receiptImages,
   FakeReceiptImagePicker? receiptPicker,
+  FakeReceiptCropper? receiptCropper,
   // By default there's no scanner, like Windows. Pass a FakeReceiptScanner to act like a phone
   ReceiptScanner? receiptScanner,
   Map<String, Object> preferences = const {},
@@ -84,6 +86,7 @@ Future<void> pumpApp(
         connectivityProvider.overrideWith((ref) => connectivity ?? Stream.value(isOnline)),
         receiptImageStoreProvider.overrideWithValue(receiptImages ?? FakeReceiptImageStore()),
         receiptImagePickerProvider.overrideWithValue(receiptPicker ?? FakeReceiptImagePicker()),
+        receiptCropperProvider.overrideWithValue(receiptCropper ?? FakeReceiptCropper()),
         receiptScannerProvider.overrideWithValue(receiptScanner ?? FakeReceiptScanner(isAvailable: false)),
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         // Tests read dates day first, whatever the machine running them is set to

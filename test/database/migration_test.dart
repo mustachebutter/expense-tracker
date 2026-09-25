@@ -8,6 +8,27 @@ import 'package:flutter_test/flutter_test.dart';
 import '../helpers/schema_v1.dart';
 import '../helpers/test_database.dart';
 
+// The receipt columns each schema version added. To make an "old" database for a test,
+// build today's schema and drop every column added after the version being tested
+const Map<int, List<String>> receiptColumnsAddedIn = {
+  5: ["image_uploaded"],
+  6: ["image_quarter_turns", "split_people", "split_amount"],
+  7: ["crop_corners"],
+};
+
+Future<void> dropReceiptColumnsAfter(AppDatabase db, int version) async
+{
+  for (final entry in receiptColumnsAddedIn.entries)
+  {
+    if (entry.key <= version) continue;
+    for (final column in entry.value)
+    {
+      await db.customStatement("ALTER TABLE receipts DROP COLUMN $column");
+    }
+  }
+  await db.customStatement("PRAGMA user_version = $version");
+}
+
 void main()
 {
   // NOTE: This simulates a user updating the app. Their db.sqlite is still on version 1,
@@ -122,11 +143,7 @@ void main()
     // A version 4 database: receipts without the columns versions 5 and 6 added
     final oldDb = AppDatabase.forTesting(NativeDatabase(file));
     await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(userId: "user-a", merchant: const Value("Kept")));
-    for (final column in ["image_uploaded", "image_quarter_turns", "split_people", "split_amount"])
-    {
-      await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN $column");
-    }
-    await oldDb.customStatement("PRAGMA user_version = 4");
+    await dropReceiptColumnsAfter(oldDb, 4);
     await oldDb.close();
 
     final db = AppDatabase.forTesting(NativeDatabase(file));
@@ -151,11 +168,7 @@ void main()
       merchant: const Value("Kept"),
       imageUploaded: const Value(true),
     ));
-    for (final column in ["image_quarter_turns", "split_people", "split_amount"])
-    {
-      await oldDb.customStatement("ALTER TABLE receipts DROP COLUMN $column");
-    }
-    await oldDb.customStatement("PRAGMA user_version = 5");
+    await dropReceiptColumnsAfter(oldDb, 5);
     await oldDb.close();
 
     final db = AppDatabase.forTesting(NativeDatabase(file));
@@ -164,5 +177,28 @@ void main()
     final receipt = (await db.receiptsDao.getAll()).single;
     expect((receipt.merchant, receipt.imageUploaded), ("Kept", true));
     expect((receipt.imageQuarterTurns, receipt.splitPeople, receipt.splitAmount), (0, null, null));
+  });
+
+  test("upgrading a version 6 database adds cropping to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      imageQuarterTurns: const Value(1),
+      splitPeople: const Value(3),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 6);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.imageQuarterTurns, receipt.splitPeople), ("Kept", 1, 3));
+    expect(receipt.cropCorners, isNull, reason: "existing receipts show the whole photo");
   });
 }

@@ -155,6 +155,10 @@ class Receipts extends Table
   // Quarter turns clockwise (0-3) to show the photo upright. The photo file itself is never
   // changed, so rotating syncs as a number instead of re-uploading the whole photo
   IntColumn get imageQuarterTurns => integer().withDefault(const Constant(0))();
+  // The receipt's four corners in the photo (see receipt_crop.dart), to cut it out of the
+  // background. Like the rotation, the photo itself is never changed, every device makes
+  // its own cropped copy from these. Null shows the whole photo
+  TextColumn get cropCorners => text().nullable()();
 
   // Splitting the bill with friends. An equal split stores how many people (you included),
   // a custom split stores your own amount. Both empty: you paid all of it
@@ -214,8 +218,8 @@ class AppDatabase extends _$AppDatabase
 
   @override
   // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
-  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting
-  int get schemaVersion => 6;
+  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting, v7 cropping
+  int get schemaVersion => 7;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -277,6 +281,10 @@ class AppDatabase extends _$AppDatabase
           await m.addColumn(receipts, receipts.imageQuarterTurns);
           await m.addColumn(receipts, receipts.splitPeople);
           await m.addColumn(receipts, receipts.splitAmount);
+        }
+        if (from < 7)
+        {
+          await m.addColumn(receipts, receipts.cropCorners);
         }
       }
     },

@@ -122,7 +122,7 @@ class ReceiptCard extends StatelessWidget
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ReceiptImage(receiptId: receipt.id, quarterTurns: receipt.imageQuarterTurns),
+                  ReceiptImage(receiptId: receipt.id, quarterTurns: receipt.imageQuarterTurns, cropCorners: receipt.cropCorners),
                   if (receipt.scanStatus == ReceiptScanStatus.waiting || receipt.scanStatus == ReceiptScanStatus.failed)
                     Positioned(
                       top: 6,

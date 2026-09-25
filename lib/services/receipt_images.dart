@@ -49,10 +49,36 @@ class ReceiptImageStore
     return await file.exists() ? file.readAsBytes() : null;
   }
 
+  // A cached cropped copy, named after the crop so a new crop never shows a stale copy
+  Future<File> croppedFileFor(String receiptId, String cropKey) async
+  {
+    return File(p.join((await _directory()).path, "${receiptId}_crop_$cropKey.jpg"));
+  }
+
+  // Saves a cropped copy and removes older crops of the same receipt
+  Future<File> saveCropped(String receiptId, String cropKey, Uint8List bytes) async
+  {
+    await _deleteCroppedCopies(receiptId);
+    final file = await croppedFileFor(receiptId, cropKey);
+    await file.parent.create(recursive: true);
+    return file.writeAsBytes(bytes, flush: true);
+  }
+
+  Future<void> _deleteCroppedCopies(String receiptId) async
+  {
+    final folder = await _directory();
+    if (!await folder.exists()) return;
+    await for (final entry in folder.list())
+    {
+      if (entry is File && p.basename(entry.path).startsWith("${receiptId}_crop_")) await entry.delete();
+    }
+  }
+
   Future<void> delete(String receiptId) async
   {
     final file = fileIn(await _directory(), receiptId);
     if (await file.exists()) await file.delete();
+    await _deleteCroppedCopies(receiptId);
   }
 }
 

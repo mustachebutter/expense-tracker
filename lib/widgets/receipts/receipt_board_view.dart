@@ -13,7 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ReceiptBoardView extends ConsumerStatefulWidget
 {
   static const Size boardSize = Size(2400, 1600);
-  static const Size cardSize = Size(160, 210);
+  // NOTE: Tall enough for the sticker and a two line name tag (name, then city)
+  static const Size cardSize = Size(160, 256);
 
   const ReceiptBoardView({super.key});
 
@@ -21,7 +22,7 @@ class ReceiptBoardView extends ConsumerStatefulWidget
   static Offset defaultPosition(int index)
   {
     const columns = 6;
-    return Offset(80.0 + (index % columns) * 200, 80.0 + (index ~/ columns) * 250);
+    return Offset(80.0 + (index % columns) * 200, 80.0 + (index ~/ columns) * 290);
   }
 
   // A slight tilt, between -6 and 6 degrees, so the board looks hand-made. It comes from the
@@ -104,7 +105,8 @@ class _ReceiptBoardViewState extends ConsumerState<ReceiptBoardView>
         key: const Key("receipt_board"),
         width: ReceiptBoardView.boardSize.width,
         height: ReceiptBoardView.boardSize.height,
-        color: colorScheme.secondary,
+        // NOTE: A warm paper color in light mode, so the white stickers stand out from it
+        color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFE7E2D8) : colorScheme.secondary,
         child: Stack(
           children: [
             for (final receipt in drawOrder)
@@ -172,6 +174,9 @@ class _BoardCard extends StatelessWidget
       receipt.merchant ?? "Untitled",
       if (receipt.total != null) "\$${receipt.total!.toStringAsFixed(2)}",
     ].join(" · ");
+    // NOTE: The most specific place is what's useful at a glance: the suburb (Etobicoke), else
+    // the city, else the country
+    final String? place = receipt.suburb ?? receipt.city ?? receipt.country;
 
     return Positioned(
       left: position.dx,
@@ -191,35 +196,74 @@ class _BoardCard extends StatelessWidget
           child: AnimatedScale(
             scale: isDragging ? 1.06 : 1,
             duration: const Duration(milliseconds: 120),
-            // NOTE: A polaroid stays white in dark mode too, it's a "physical" object
-            child: Container(
+            child: SizedBox(
               width: ReceiptBoardView.cardSize.width,
               height: ReceiptBoardView.cardSize.height,
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDragging ? 0.35 : 0.2),
-                    blurRadius: isDragging ? 16 : 6,
-                    offset: Offset(0, isDragging ? 8 : 3),
-                  ),
-                ],
-              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(child: ReceiptImage(receiptId: receipt.id)),
-                  SizedBox(
-                    height: 36,
-                    child: Center(
-                      child: Text(
-                        caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
+                  // NOTE: A die-cut sticker: the receipt with a thick white outline that follows
+                  // its rounded edges, and a shadow as if it's stuck on slightly raised. It stays
+                  // white in dark mode too, like a real sticker would
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDragging ? 0.4 : 0.25),
+                            blurRadius: isDragging ? 18 : 5,
+                            offset: Offset(isDragging ? 4 : 1, isDragging ? 10 : 2),
+                          ),
+                        ],
                       ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: ReceiptImage(
+                          receiptId: receipt.id,
+                          quarterTurns: receipt.imageQuarterTurns,
+                          cropCorners: receipt.cropCorners,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // A little name tag under the sticker, with the city (or country) under the name
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1))],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        if (place != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 2,
+                            children: [
+                              const Icon(Icons.place, size: 11, color: Colors.black54),
+                              Flexible(
+                                child: Text(
+                                  place,
+                                  key: Key("sticker_place_${receipt.id}"),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.black54, fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
                 ],

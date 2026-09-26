@@ -3301,6 +3301,66 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _suburbMeta = const VerificationMeta('suburb');
+  @override
+  late final GeneratedColumn<String> suburb = GeneratedColumn<String>(
+    'suburb',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cityMeta = const VerificationMeta('city');
+  @override
+  late final GeneratedColumn<String> city = GeneratedColumn<String>(
+    'city',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countryMeta = const VerificationMeta(
+    'country',
+  );
+  @override
+  late final GeneratedColumn<String> country = GeneratedColumn<String>(
+    'country',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pendingLatitudeMeta = const VerificationMeta(
+    'pendingLatitude',
+  );
+  @override
+  late final GeneratedColumn<double> pendingLatitude = GeneratedColumn<double>(
+    'pending_latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pendingLongitudeMeta = const VerificationMeta(
+    'pendingLongitude',
+  );
+  @override
+  late final GeneratedColumn<double> pendingLongitude = GeneratedColumn<double>(
+    'pending_longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -3348,6 +3408,66 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   ).withConverter<ReceiptScanStatus>($ReceiptsTable.$converterscanStatus);
+  static const VerificationMeta _imageUploadedMeta = const VerificationMeta(
+    'imageUploaded',
+  );
+  @override
+  late final GeneratedColumn<bool> imageUploaded = GeneratedColumn<bool>(
+    'image_uploaded',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("image_uploaded" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _imageQuarterTurnsMeta = const VerificationMeta(
+    'imageQuarterTurns',
+  );
+  @override
+  late final GeneratedColumn<int> imageQuarterTurns = GeneratedColumn<int>(
+    'image_quarter_turns',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _cropCornersMeta = const VerificationMeta(
+    'cropCorners',
+  );
+  @override
+  late final GeneratedColumn<String> cropCorners = GeneratedColumn<String>(
+    'crop_corners',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _splitPeopleMeta = const VerificationMeta(
+    'splitPeople',
+  );
+  @override
+  late final GeneratedColumn<int> splitPeople = GeneratedColumn<int>(
+    'split_people',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _splitAmountMeta = const VerificationMeta(
+    'splitAmount',
+  );
+  @override
+  late final GeneratedColumn<double> splitAmount = GeneratedColumn<double>(
+    'split_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -3451,10 +3571,21 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     userId,
     merchant,
     total,
+    suburb,
+    city,
+    state,
+    country,
+    pendingLatitude,
+    pendingLongitude,
     date,
     categoryId,
     transactionId,
     scanStatus,
+    imageUploaded,
+    imageQuarterTurns,
+    cropCorners,
+    splitPeople,
+    splitAmount,
     isFavorite,
     boardX,
     boardY,
@@ -3499,6 +3630,48 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         total.isAcceptableOrUnknown(data['total']!, _totalMeta),
       );
     }
+    if (data.containsKey('suburb')) {
+      context.handle(
+        _suburbMeta,
+        suburb.isAcceptableOrUnknown(data['suburb']!, _suburbMeta),
+      );
+    }
+    if (data.containsKey('city')) {
+      context.handle(
+        _cityMeta,
+        city.isAcceptableOrUnknown(data['city']!, _cityMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('country')) {
+      context.handle(
+        _countryMeta,
+        country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
+    }
+    if (data.containsKey('pending_latitude')) {
+      context.handle(
+        _pendingLatitudeMeta,
+        pendingLatitude.isAcceptableOrUnknown(
+          data['pending_latitude']!,
+          _pendingLatitudeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pending_longitude')) {
+      context.handle(
+        _pendingLongitudeMeta,
+        pendingLongitude.isAcceptableOrUnknown(
+          data['pending_longitude']!,
+          _pendingLongitudeMeta,
+        ),
+      );
+    }
     if (data.containsKey('date')) {
       context.handle(
         _dateMeta,
@@ -3517,6 +3690,51 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         transactionId.isAcceptableOrUnknown(
           data['transaction_id']!,
           _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_uploaded')) {
+      context.handle(
+        _imageUploadedMeta,
+        imageUploaded.isAcceptableOrUnknown(
+          data['image_uploaded']!,
+          _imageUploadedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_quarter_turns')) {
+      context.handle(
+        _imageQuarterTurnsMeta,
+        imageQuarterTurns.isAcceptableOrUnknown(
+          data['image_quarter_turns']!,
+          _imageQuarterTurnsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('crop_corners')) {
+      context.handle(
+        _cropCornersMeta,
+        cropCorners.isAcceptableOrUnknown(
+          data['crop_corners']!,
+          _cropCornersMeta,
+        ),
+      );
+    }
+    if (data.containsKey('split_people')) {
+      context.handle(
+        _splitPeopleMeta,
+        splitPeople.isAcceptableOrUnknown(
+          data['split_people']!,
+          _splitPeopleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('split_amount')) {
+      context.handle(
+        _splitAmountMeta,
+        splitAmount.isAcceptableOrUnknown(
+          data['split_amount']!,
+          _splitAmountMeta,
         ),
       );
     }
@@ -3593,6 +3811,30 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.double,
         data['${effectivePrefix}total'],
       ),
+      suburb: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suburb'],
+      ),
+      city: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}city'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      ),
+      country: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country'],
+      ),
+      pendingLatitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pending_latitude'],
+      ),
+      pendingLongitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pending_longitude'],
+      ),
       date: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
@@ -3610,6 +3852,26 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
           DriftSqlType.int,
           data['${effectivePrefix}scan_status'],
         )!,
+      ),
+      imageUploaded: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}image_uploaded'],
+      )!,
+      imageQuarterTurns: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}image_quarter_turns'],
+      )!,
+      cropCorners: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}crop_corners'],
+      ),
+      splitPeople: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}split_people'],
+      ),
+      splitAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}split_amount'],
       ),
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -3660,10 +3922,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final String userId;
   final String? merchant;
   final double? total;
+  final String? suburb;
+  final String? city;
+  final String? state;
+  final String? country;
+  final double? pendingLatitude;
+  final double? pendingLongitude;
   final DateTime? date;
   final String? categoryId;
   final String? transactionId;
   final ReceiptScanStatus scanStatus;
+  final bool imageUploaded;
+  final int imageQuarterTurns;
+  final String? cropCorners;
+  final int? splitPeople;
+  final double? splitAmount;
   final bool isFavorite;
   final double? boardX;
   final double? boardY;
@@ -3677,10 +3950,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     required this.userId,
     this.merchant,
     this.total,
+    this.suburb,
+    this.city,
+    this.state,
+    this.country,
+    this.pendingLatitude,
+    this.pendingLongitude,
     this.date,
     this.categoryId,
     this.transactionId,
     required this.scanStatus,
+    required this.imageUploaded,
+    required this.imageQuarterTurns,
+    this.cropCorners,
+    this.splitPeople,
+    this.splitAmount,
     required this.isFavorite,
     this.boardX,
     this.boardY,
@@ -3701,6 +3985,24 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     if (!nullToAbsent || total != null) {
       map['total'] = Variable<double>(total);
     }
+    if (!nullToAbsent || suburb != null) {
+      map['suburb'] = Variable<String>(suburb);
+    }
+    if (!nullToAbsent || city != null) {
+      map['city'] = Variable<String>(city);
+    }
+    if (!nullToAbsent || state != null) {
+      map['state'] = Variable<String>(state);
+    }
+    if (!nullToAbsent || country != null) {
+      map['country'] = Variable<String>(country);
+    }
+    if (!nullToAbsent || pendingLatitude != null) {
+      map['pending_latitude'] = Variable<double>(pendingLatitude);
+    }
+    if (!nullToAbsent || pendingLongitude != null) {
+      map['pending_longitude'] = Variable<double>(pendingLongitude);
+    }
     if (!nullToAbsent || date != null) {
       map['date'] = Variable<DateTime>(date);
     }
@@ -3714,6 +4016,17 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       map['scan_status'] = Variable<int>(
         $ReceiptsTable.$converterscanStatus.toSql(scanStatus),
       );
+    }
+    map['image_uploaded'] = Variable<bool>(imageUploaded);
+    map['image_quarter_turns'] = Variable<int>(imageQuarterTurns);
+    if (!nullToAbsent || cropCorners != null) {
+      map['crop_corners'] = Variable<String>(cropCorners);
+    }
+    if (!nullToAbsent || splitPeople != null) {
+      map['split_people'] = Variable<int>(splitPeople);
+    }
+    if (!nullToAbsent || splitAmount != null) {
+      map['split_amount'] = Variable<double>(splitAmount);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     if (!nullToAbsent || boardX != null) {
@@ -3740,6 +4053,22 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       total: total == null && nullToAbsent
           ? const Value.absent()
           : Value(total),
+      suburb: suburb == null && nullToAbsent
+          ? const Value.absent()
+          : Value(suburb),
+      city: city == null && nullToAbsent ? const Value.absent() : Value(city),
+      state: state == null && nullToAbsent
+          ? const Value.absent()
+          : Value(state),
+      country: country == null && nullToAbsent
+          ? const Value.absent()
+          : Value(country),
+      pendingLatitude: pendingLatitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingLatitude),
+      pendingLongitude: pendingLongitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingLongitude),
       date: date == null && nullToAbsent ? const Value.absent() : Value(date),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
@@ -3748,6 +4077,17 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ? const Value.absent()
           : Value(transactionId),
       scanStatus: Value(scanStatus),
+      imageUploaded: Value(imageUploaded),
+      imageQuarterTurns: Value(imageQuarterTurns),
+      cropCorners: cropCorners == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cropCorners),
+      splitPeople: splitPeople == null && nullToAbsent
+          ? const Value.absent()
+          : Value(splitPeople),
+      splitAmount: splitAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(splitAmount),
       isFavorite: Value(isFavorite),
       boardX: boardX == null && nullToAbsent
           ? const Value.absent()
@@ -3773,12 +4113,23 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: serializer.fromJson<String>(json['userId']),
       merchant: serializer.fromJson<String?>(json['merchant']),
       total: serializer.fromJson<double?>(json['total']),
+      suburb: serializer.fromJson<String?>(json['suburb']),
+      city: serializer.fromJson<String?>(json['city']),
+      state: serializer.fromJson<String?>(json['state']),
+      country: serializer.fromJson<String?>(json['country']),
+      pendingLatitude: serializer.fromJson<double?>(json['pendingLatitude']),
+      pendingLongitude: serializer.fromJson<double?>(json['pendingLongitude']),
       date: serializer.fromJson<DateTime?>(json['date']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
       scanStatus: $ReceiptsTable.$converterscanStatus.fromJson(
         serializer.fromJson<int>(json['scanStatus']),
       ),
+      imageUploaded: serializer.fromJson<bool>(json['imageUploaded']),
+      imageQuarterTurns: serializer.fromJson<int>(json['imageQuarterTurns']),
+      cropCorners: serializer.fromJson<String?>(json['cropCorners']),
+      splitPeople: serializer.fromJson<int?>(json['splitPeople']),
+      splitAmount: serializer.fromJson<double?>(json['splitAmount']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       boardX: serializer.fromJson<double?>(json['boardX']),
       boardY: serializer.fromJson<double?>(json['boardY']),
@@ -3797,12 +4148,23 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       'userId': serializer.toJson<String>(userId),
       'merchant': serializer.toJson<String?>(merchant),
       'total': serializer.toJson<double?>(total),
+      'suburb': serializer.toJson<String?>(suburb),
+      'city': serializer.toJson<String?>(city),
+      'state': serializer.toJson<String?>(state),
+      'country': serializer.toJson<String?>(country),
+      'pendingLatitude': serializer.toJson<double?>(pendingLatitude),
+      'pendingLongitude': serializer.toJson<double?>(pendingLongitude),
       'date': serializer.toJson<DateTime?>(date),
       'categoryId': serializer.toJson<String?>(categoryId),
       'transactionId': serializer.toJson<String?>(transactionId),
       'scanStatus': serializer.toJson<int>(
         $ReceiptsTable.$converterscanStatus.toJson(scanStatus),
       ),
+      'imageUploaded': serializer.toJson<bool>(imageUploaded),
+      'imageQuarterTurns': serializer.toJson<int>(imageQuarterTurns),
+      'cropCorners': serializer.toJson<String?>(cropCorners),
+      'splitPeople': serializer.toJson<int?>(splitPeople),
+      'splitAmount': serializer.toJson<double?>(splitAmount),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'boardX': serializer.toJson<double?>(boardX),
       'boardY': serializer.toJson<double?>(boardY),
@@ -3819,10 +4181,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     String? userId,
     Value<String?> merchant = const Value.absent(),
     Value<double?> total = const Value.absent(),
+    Value<String?> suburb = const Value.absent(),
+    Value<String?> city = const Value.absent(),
+    Value<String?> state = const Value.absent(),
+    Value<String?> country = const Value.absent(),
+    Value<double?> pendingLatitude = const Value.absent(),
+    Value<double?> pendingLongitude = const Value.absent(),
     Value<DateTime?> date = const Value.absent(),
     Value<String?> categoryId = const Value.absent(),
     Value<String?> transactionId = const Value.absent(),
     ReceiptScanStatus? scanStatus,
+    bool? imageUploaded,
+    int? imageQuarterTurns,
+    Value<String?> cropCorners = const Value.absent(),
+    Value<int?> splitPeople = const Value.absent(),
+    Value<double?> splitAmount = const Value.absent(),
     bool? isFavorite,
     Value<double?> boardX = const Value.absent(),
     Value<double?> boardY = const Value.absent(),
@@ -3836,12 +4209,27 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     userId: userId ?? this.userId,
     merchant: merchant.present ? merchant.value : this.merchant,
     total: total.present ? total.value : this.total,
+    suburb: suburb.present ? suburb.value : this.suburb,
+    city: city.present ? city.value : this.city,
+    state: state.present ? state.value : this.state,
+    country: country.present ? country.value : this.country,
+    pendingLatitude: pendingLatitude.present
+        ? pendingLatitude.value
+        : this.pendingLatitude,
+    pendingLongitude: pendingLongitude.present
+        ? pendingLongitude.value
+        : this.pendingLongitude,
     date: date.present ? date.value : this.date,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     transactionId: transactionId.present
         ? transactionId.value
         : this.transactionId,
     scanStatus: scanStatus ?? this.scanStatus,
+    imageUploaded: imageUploaded ?? this.imageUploaded,
+    imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+    cropCorners: cropCorners.present ? cropCorners.value : this.cropCorners,
+    splitPeople: splitPeople.present ? splitPeople.value : this.splitPeople,
+    splitAmount: splitAmount.present ? splitAmount.value : this.splitAmount,
     isFavorite: isFavorite ?? this.isFavorite,
     boardX: boardX.present ? boardX.value : this.boardX,
     boardY: boardY.present ? boardY.value : this.boardY,
@@ -3857,6 +4245,16 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: data.userId.present ? data.userId.value : this.userId,
       merchant: data.merchant.present ? data.merchant.value : this.merchant,
       total: data.total.present ? data.total.value : this.total,
+      suburb: data.suburb.present ? data.suburb.value : this.suburb,
+      city: data.city.present ? data.city.value : this.city,
+      state: data.state.present ? data.state.value : this.state,
+      country: data.country.present ? data.country.value : this.country,
+      pendingLatitude: data.pendingLatitude.present
+          ? data.pendingLatitude.value
+          : this.pendingLatitude,
+      pendingLongitude: data.pendingLongitude.present
+          ? data.pendingLongitude.value
+          : this.pendingLongitude,
       date: data.date.present ? data.date.value : this.date,
       categoryId: data.categoryId.present
           ? data.categoryId.value
@@ -3867,6 +4265,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       scanStatus: data.scanStatus.present
           ? data.scanStatus.value
           : this.scanStatus,
+      imageUploaded: data.imageUploaded.present
+          ? data.imageUploaded.value
+          : this.imageUploaded,
+      imageQuarterTurns: data.imageQuarterTurns.present
+          ? data.imageQuarterTurns.value
+          : this.imageQuarterTurns,
+      cropCorners: data.cropCorners.present
+          ? data.cropCorners.value
+          : this.cropCorners,
+      splitPeople: data.splitPeople.present
+          ? data.splitPeople.value
+          : this.splitPeople,
+      splitAmount: data.splitAmount.present
+          ? data.splitAmount.value
+          : this.splitAmount,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -3887,10 +4300,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('suburb: $suburb, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('country: $country, ')
+          ..write('pendingLatitude: $pendingLatitude, ')
+          ..write('pendingLongitude: $pendingLongitude, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
+          ..write('imageUploaded: $imageUploaded, ')
+          ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('cropCorners: $cropCorners, ')
+          ..write('splitPeople: $splitPeople, ')
+          ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -3904,15 +4328,26 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     userId,
     merchant,
     total,
+    suburb,
+    city,
+    state,
+    country,
+    pendingLatitude,
+    pendingLongitude,
     date,
     categoryId,
     transactionId,
     scanStatus,
+    imageUploaded,
+    imageQuarterTurns,
+    cropCorners,
+    splitPeople,
+    splitAmount,
     isFavorite,
     boardX,
     boardY,
@@ -3921,7 +4356,7 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     isSynced,
     isDeleted,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3930,10 +4365,21 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.userId == this.userId &&
           other.merchant == this.merchant &&
           other.total == this.total &&
+          other.suburb == this.suburb &&
+          other.city == this.city &&
+          other.state == this.state &&
+          other.country == this.country &&
+          other.pendingLatitude == this.pendingLatitude &&
+          other.pendingLongitude == this.pendingLongitude &&
           other.date == this.date &&
           other.categoryId == this.categoryId &&
           other.transactionId == this.transactionId &&
           other.scanStatus == this.scanStatus &&
+          other.imageUploaded == this.imageUploaded &&
+          other.imageQuarterTurns == this.imageQuarterTurns &&
+          other.cropCorners == this.cropCorners &&
+          other.splitPeople == this.splitPeople &&
+          other.splitAmount == this.splitAmount &&
           other.isFavorite == this.isFavorite &&
           other.boardX == this.boardX &&
           other.boardY == this.boardY &&
@@ -3949,10 +4395,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String> userId;
   final Value<String?> merchant;
   final Value<double?> total;
+  final Value<String?> suburb;
+  final Value<String?> city;
+  final Value<String?> state;
+  final Value<String?> country;
+  final Value<double?> pendingLatitude;
+  final Value<double?> pendingLongitude;
   final Value<DateTime?> date;
   final Value<String?> categoryId;
   final Value<String?> transactionId;
   final Value<ReceiptScanStatus> scanStatus;
+  final Value<bool> imageUploaded;
+  final Value<int> imageQuarterTurns;
+  final Value<String?> cropCorners;
+  final Value<int?> splitPeople;
+  final Value<double?> splitAmount;
   final Value<bool> isFavorite;
   final Value<double?> boardX;
   final Value<double?> boardY;
@@ -3967,10 +4424,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.userId = const Value.absent(),
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.suburb = const Value.absent(),
+    this.city = const Value.absent(),
+    this.state = const Value.absent(),
+    this.country = const Value.absent(),
+    this.pendingLatitude = const Value.absent(),
+    this.pendingLongitude = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
+    this.imageUploaded = const Value.absent(),
+    this.imageQuarterTurns = const Value.absent(),
+    this.cropCorners = const Value.absent(),
+    this.splitPeople = const Value.absent(),
+    this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -3986,10 +4454,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     required String userId,
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.suburb = const Value.absent(),
+    this.city = const Value.absent(),
+    this.state = const Value.absent(),
+    this.country = const Value.absent(),
+    this.pendingLatitude = const Value.absent(),
+    this.pendingLongitude = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
     this.scanStatus = const Value.absent(),
+    this.imageUploaded = const Value.absent(),
+    this.imageQuarterTurns = const Value.absent(),
+    this.cropCorners = const Value.absent(),
+    this.splitPeople = const Value.absent(),
+    this.splitAmount = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.boardX = const Value.absent(),
     this.boardY = const Value.absent(),
@@ -4005,10 +4484,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? userId,
     Expression<String>? merchant,
     Expression<double>? total,
+    Expression<String>? suburb,
+    Expression<String>? city,
+    Expression<String>? state,
+    Expression<String>? country,
+    Expression<double>? pendingLatitude,
+    Expression<double>? pendingLongitude,
     Expression<DateTime>? date,
     Expression<String>? categoryId,
     Expression<String>? transactionId,
     Expression<int>? scanStatus,
+    Expression<bool>? imageUploaded,
+    Expression<int>? imageQuarterTurns,
+    Expression<String>? cropCorners,
+    Expression<int>? splitPeople,
+    Expression<double>? splitAmount,
     Expression<bool>? isFavorite,
     Expression<double>? boardX,
     Expression<double>? boardY,
@@ -4024,10 +4514,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (userId != null) 'user_id': userId,
       if (merchant != null) 'merchant': merchant,
       if (total != null) 'total': total,
+      if (suburb != null) 'suburb': suburb,
+      if (city != null) 'city': city,
+      if (state != null) 'state': state,
+      if (country != null) 'country': country,
+      if (pendingLatitude != null) 'pending_latitude': pendingLatitude,
+      if (pendingLongitude != null) 'pending_longitude': pendingLongitude,
       if (date != null) 'date': date,
       if (categoryId != null) 'category_id': categoryId,
       if (transactionId != null) 'transaction_id': transactionId,
       if (scanStatus != null) 'scan_status': scanStatus,
+      if (imageUploaded != null) 'image_uploaded': imageUploaded,
+      if (imageQuarterTurns != null) 'image_quarter_turns': imageQuarterTurns,
+      if (cropCorners != null) 'crop_corners': cropCorners,
+      if (splitPeople != null) 'split_people': splitPeople,
+      if (splitAmount != null) 'split_amount': splitAmount,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (boardX != null) 'board_x': boardX,
       if (boardY != null) 'board_y': boardY,
@@ -4045,10 +4546,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String>? userId,
     Value<String?>? merchant,
     Value<double?>? total,
+    Value<String?>? suburb,
+    Value<String?>? city,
+    Value<String?>? state,
+    Value<String?>? country,
+    Value<double?>? pendingLatitude,
+    Value<double?>? pendingLongitude,
     Value<DateTime?>? date,
     Value<String?>? categoryId,
     Value<String?>? transactionId,
     Value<ReceiptScanStatus>? scanStatus,
+    Value<bool>? imageUploaded,
+    Value<int>? imageQuarterTurns,
+    Value<String?>? cropCorners,
+    Value<int?>? splitPeople,
+    Value<double?>? splitAmount,
     Value<bool>? isFavorite,
     Value<double?>? boardX,
     Value<double?>? boardY,
@@ -4064,10 +4576,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       userId: userId ?? this.userId,
       merchant: merchant ?? this.merchant,
       total: total ?? this.total,
+      suburb: suburb ?? this.suburb,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      country: country ?? this.country,
+      pendingLatitude: pendingLatitude ?? this.pendingLatitude,
+      pendingLongitude: pendingLongitude ?? this.pendingLongitude,
       date: date ?? this.date,
       categoryId: categoryId ?? this.categoryId,
       transactionId: transactionId ?? this.transactionId,
       scanStatus: scanStatus ?? this.scanStatus,
+      imageUploaded: imageUploaded ?? this.imageUploaded,
+      imageQuarterTurns: imageQuarterTurns ?? this.imageQuarterTurns,
+      cropCorners: cropCorners ?? this.cropCorners,
+      splitPeople: splitPeople ?? this.splitPeople,
+      splitAmount: splitAmount ?? this.splitAmount,
       isFavorite: isFavorite ?? this.isFavorite,
       boardX: boardX ?? this.boardX,
       boardY: boardY ?? this.boardY,
@@ -4095,6 +4618,24 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     if (total.present) {
       map['total'] = Variable<double>(total.value);
     }
+    if (suburb.present) {
+      map['suburb'] = Variable<String>(suburb.value);
+    }
+    if (city.present) {
+      map['city'] = Variable<String>(city.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (country.present) {
+      map['country'] = Variable<String>(country.value);
+    }
+    if (pendingLatitude.present) {
+      map['pending_latitude'] = Variable<double>(pendingLatitude.value);
+    }
+    if (pendingLongitude.present) {
+      map['pending_longitude'] = Variable<double>(pendingLongitude.value);
+    }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
@@ -4108,6 +4649,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       map['scan_status'] = Variable<int>(
         $ReceiptsTable.$converterscanStatus.toSql(scanStatus.value),
       );
+    }
+    if (imageUploaded.present) {
+      map['image_uploaded'] = Variable<bool>(imageUploaded.value);
+    }
+    if (imageQuarterTurns.present) {
+      map['image_quarter_turns'] = Variable<int>(imageQuarterTurns.value);
+    }
+    if (cropCorners.present) {
+      map['crop_corners'] = Variable<String>(cropCorners.value);
+    }
+    if (splitPeople.present) {
+      map['split_people'] = Variable<int>(splitPeople.value);
+    }
+    if (splitAmount.present) {
+      map['split_amount'] = Variable<double>(splitAmount.value);
     }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
@@ -4146,10 +4702,21 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('suburb: $suburb, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('country: $country, ')
+          ..write('pendingLatitude: $pendingLatitude, ')
+          ..write('pendingLongitude: $pendingLongitude, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
           ..write('scanStatus: $scanStatus, ')
+          ..write('imageUploaded: $imageUploaded, ')
+          ..write('imageQuarterTurns: $imageQuarterTurns, ')
+          ..write('cropCorners: $cropCorners, ')
+          ..write('splitPeople: $splitPeople, ')
+          ..write('splitAmount: $splitAmount, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('boardX: $boardX, ')
           ..write('boardY: $boardY, ')
@@ -6650,10 +7217,21 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       required String userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> suburb,
+      Value<String?> city,
+      Value<String?> state,
+      Value<String?> country,
+      Value<double?> pendingLatitude,
+      Value<double?> pendingLongitude,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
+      Value<bool> imageUploaded,
+      Value<int> imageQuarterTurns,
+      Value<String?> cropCorners,
+      Value<int?> splitPeople,
+      Value<double?> splitAmount,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6670,10 +7248,21 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> suburb,
+      Value<String?> city,
+      Value<String?> state,
+      Value<String?> country,
+      Value<double?> pendingLatitude,
+      Value<double?> pendingLongitude,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
       Value<ReceiptScanStatus> scanStatus,
+      Value<bool> imageUploaded,
+      Value<int> imageQuarterTurns,
+      Value<String?> cropCorners,
+      Value<int?> splitPeople,
+      Value<double?> splitAmount,
       Value<bool> isFavorite,
       Value<double?> boardX,
       Value<double?> boardY,
@@ -6753,6 +7342,36 @@ class $$ReceiptsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get suburb => $composableBuilder(
+    column: $table.suburb,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnFilters(column),
@@ -6762,6 +7381,31 @@ class $$ReceiptsTableFilterComposer
   get scanStatus => $composableBuilder(
     column: $table.scanStatus,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
@@ -6880,6 +7524,36 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get suburb => $composableBuilder(
+    column: $table.suburb,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnOrderings(column),
@@ -6887,6 +7561,31 @@ class $$ReceiptsTableOrderingComposer
 
   ColumnOrderings<int> get scanStatus => $composableBuilder(
     column: $table.scanStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6998,6 +7697,28 @@ class $$ReceiptsTableAnnotationComposer
   GeneratedColumn<double> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
 
+  GeneratedColumn<String> get suburb =>
+      $composableBuilder(column: $table.suburb, builder: (column) => column);
+
+  GeneratedColumn<String> get city =>
+      $composableBuilder(column: $table.city, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get country =>
+      $composableBuilder(column: $table.country, builder: (column) => column);
+
+  GeneratedColumn<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
@@ -7006,6 +7727,31 @@ class $$ReceiptsTableAnnotationComposer
         column: $table.scanStatus,
         builder: (column) => column,
       );
+
+  GeneratedColumn<bool> get imageUploaded => $composableBuilder(
+    column: $table.imageUploaded,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get imageQuarterTurns => $composableBuilder(
+    column: $table.imageQuarterTurns,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cropCorners => $composableBuilder(
+    column: $table.cropCorners,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get splitPeople => $composableBuilder(
+    column: $table.splitPeople,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get splitAmount => $composableBuilder(
+    column: $table.splitAmount,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
@@ -7112,10 +7858,21 @@ class $$ReceiptsTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> suburb = const Value.absent(),
+                Value<String?> city = const Value.absent(),
+                Value<String?> state = const Value.absent(),
+                Value<String?> country = const Value.absent(),
+                Value<double?> pendingLatitude = const Value.absent(),
+                Value<double?> pendingLongitude = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
+                Value<bool> imageUploaded = const Value.absent(),
+                Value<int> imageQuarterTurns = const Value.absent(),
+                Value<String?> cropCorners = const Value.absent(),
+                Value<int?> splitPeople = const Value.absent(),
+                Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7130,10 +7887,21 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                suburb: suburb,
+                city: city,
+                state: state,
+                country: country,
+                pendingLatitude: pendingLatitude,
+                pendingLongitude: pendingLongitude,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,
                 scanStatus: scanStatus,
+                imageUploaded: imageUploaded,
+                imageQuarterTurns: imageQuarterTurns,
+                cropCorners: cropCorners,
+                splitPeople: splitPeople,
+                splitAmount: splitAmount,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,
@@ -7150,10 +7918,21 @@ class $$ReceiptsTableTableManager
                 required String userId,
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> suburb = const Value.absent(),
+                Value<String?> city = const Value.absent(),
+                Value<String?> state = const Value.absent(),
+                Value<String?> country = const Value.absent(),
+                Value<double?> pendingLatitude = const Value.absent(),
+                Value<double?> pendingLongitude = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
                 Value<ReceiptScanStatus> scanStatus = const Value.absent(),
+                Value<bool> imageUploaded = const Value.absent(),
+                Value<int> imageQuarterTurns = const Value.absent(),
+                Value<String?> cropCorners = const Value.absent(),
+                Value<int?> splitPeople = const Value.absent(),
+                Value<double?> splitAmount = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<double?> boardX = const Value.absent(),
                 Value<double?> boardY = const Value.absent(),
@@ -7168,10 +7947,21 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                suburb: suburb,
+                city: city,
+                state: state,
+                country: country,
+                pendingLatitude: pendingLatitude,
+                pendingLongitude: pendingLongitude,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,
                 scanStatus: scanStatus,
+                imageUploaded: imageUploaded,
+                imageQuarterTurns: imageQuarterTurns,
+                cropCorners: cropCorners,
+                splitPeople: splitPeople,
+                splitAmount: splitAmount,
                 isFavorite: isFavorite,
                 boardX: boardX,
                 boardY: boardY,

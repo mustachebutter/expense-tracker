@@ -1,5 +1,8 @@
 import 'package:drift/drift.dart' as drift;
+import 'dart:typed_data';
+
 import 'package:expense_tracker/daos/base_dao.dart';
+import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'database.dart';
 
@@ -32,6 +35,11 @@ abstract class SyncRemote
 
   // Rows changed on the server at or after [since] (null = all of them), oldest change first
   Future<List<Map<String, dynamic>>> fetchChanges(String table, String userId, String? since);
+
+  // Receipt photos live in file storage, next to the tables
+  Future<void> uploadReceiptImage(String userId, String receiptId, Uint8List bytes);
+  Future<Uint8List> downloadReceiptImage(String userId, String receiptId);
+  Future<void> removeReceiptImage(String userId, String receiptId);
 }
 
 class SupabaseSyncRemote implements SyncRemote
@@ -42,9 +50,38 @@ class SupabaseSyncRemote implements SyncRemote
   // would keep the sync "running" forever, and every later sync would wait behind it
   static const Duration _timeout = Duration(seconds: 30);
 
+  // NOTE: A private bucket. Each user's photos are in a folder named after their id, and
+  // the storage policies (see the receipts SQL migration) only let them reach that folder
+  static const String _receiptBucket = "receipts";
+
   final SupabaseClient _supabase;
 
   SupabaseSyncRemote(this._supabase);
+
+  String _receiptImagePath(String userId, String receiptId) => "$userId/$receiptId.jpg";
+
+  @override
+  Future<void> uploadReceiptImage(String userId, String receiptId, Uint8List bytes) async
+  {
+    await _supabase.storage.from(_receiptBucket).uploadBinary(
+      _receiptImagePath(userId, receiptId),
+      bytes,
+      // upsert: re-uploading after an interrupted sync just overwrites the same file
+      fileOptions: const FileOptions(upsert: true, contentType: "image/jpeg"),
+    ).timeout(_timeout);
+  }
+
+  @override
+  Future<Uint8List> downloadReceiptImage(String userId, String receiptId)
+  {
+    return _supabase.storage.from(_receiptBucket).download(_receiptImagePath(userId, receiptId)).timeout(_timeout);
+  }
+
+  @override
+  Future<void> removeReceiptImage(String userId, String receiptId) async
+  {
+    await _supabase.storage.from(_receiptBucket).remove([_receiptImagePath(userId, receiptId)]).timeout(_timeout);
+  }
 
   @override
   Future<void> upsert(String table, List<Map<String, dynamic>> rows) async
@@ -136,15 +173,19 @@ class _SyncTable<D>
 }
 
 DateTime _parseDate(Object? value) => DateTime.parse(value as String).toLocal();
+DateTime? _parseOptionalDate(Object? value) => value == null ? null : _parseDate(value);
+String? _formatOptionalDate(DateTime? value) => value == null ? null : _formatDate(value);
+double? _optionalDouble(Object? value) => (value as num?)?.toDouble();
 String _formatDate(DateTime value) => value.toUtc().toIso8601String();
 
 class SyncEngine
 {
   final AppDatabase _db;
   final SyncRemote _remote;
+  final ReceiptImageStore _receiptImages;
 
   // NOTE: Created by syncEngineProvider, use it through syncControllerProvider
-  SyncEngine(this._db, this._remote);
+  SyncEngine(this._db, this._remote, this._receiptImages);
 
   // NOTE: Order matters, parents before children, so a transaction is never uploaded
   // before the category/template it points to
@@ -294,7 +335,111 @@ class SyncEngine
         isSynced: const drift.Value(true),
       ),
     ),
+    // NOTE: After transactions, since a receipt can point at the transaction it became.
+    // The photo isn't part of the row, it goes through file storage in _syncReceiptImages
+    _SyncTable<Receipt>(
+      name: "receipts",
+      dao: _db.receiptsDao,
+      getUnsynced: _db.receiptsDao.getUnsynced,
+      keyOf: (row) => (id: row.id, updatedAt: row.updatedAt),
+      toJson: (row) => {
+        "id": row.id,
+        "user_id": row.userId,
+        "merchant": row.merchant,
+        "total": row.total,
+        "suburb": row.suburb,
+        "city": row.city,
+        "state": row.state,
+        "country": row.country,
+        "pending_latitude": row.pendingLatitude,
+        "pending_longitude": row.pendingLongitude,
+        "date": _formatOptionalDate(row.date),
+        "category_id": row.categoryId,
+        "transaction_id": row.transactionId,
+        "scan_status": row.scanStatus.index,
+        "image_uploaded": row.imageUploaded,
+        "image_quarter_turns": row.imageQuarterTurns,
+        "crop_corners": row.cropCorners,
+        "split_people": row.splitPeople,
+        "split_amount": row.splitAmount,
+        "is_favorite": row.isFavorite,
+        "board_x": row.boardX,
+        "board_y": row.boardY,
+        "board_z": row.boardZ,
+        "created_at": _formatDate(row.createdAt),
+        "is_deleted": row.isDeleted,
+        "updated_at": _formatDate(row.updatedAt),
+      },
+      fromJson: (json) => ReceiptsCompanion(
+        id: drift.Value(json["id"]),
+        userId: drift.Value(json["user_id"]),
+        merchant: drift.Value(json["merchant"] as String?),
+        total: drift.Value(_optionalDouble(json["total"])),
+        suburb: drift.Value(json["suburb"] as String?),
+        city: drift.Value(json["city"] as String?),
+        state: drift.Value(json["state"] as String?),
+        country: drift.Value(json["country"] as String?),
+        pendingLatitude: drift.Value(_optionalDouble(json["pending_latitude"])),
+        pendingLongitude: drift.Value(_optionalDouble(json["pending_longitude"])),
+        date: drift.Value(_parseOptionalDate(json["date"])),
+        categoryId: drift.Value(json["category_id"] as String?),
+        transactionId: drift.Value(json["transaction_id"] as String?),
+        scanStatus: drift.Value(ReceiptScanStatus.values[json["scan_status"] as int]),
+        imageUploaded: drift.Value(json["image_uploaded"]),
+        imageQuarterTurns: drift.Value(json["image_quarter_turns"] as int),
+        cropCorners: drift.Value(json["crop_corners"] as String?),
+        splitPeople: drift.Value(json["split_people"] as int?),
+        splitAmount: drift.Value(_optionalDouble(json["split_amount"])),
+        isFavorite: drift.Value(json["is_favorite"]),
+        boardX: drift.Value(_optionalDouble(json["board_x"])),
+        boardY: drift.Value(_optionalDouble(json["board_y"])),
+        boardZ: drift.Value(json["board_z"] as int),
+        createdAt: drift.Value(_parseDate(json["created_at"])),
+        isDeleted: drift.Value(json["is_deleted"]),
+        updatedAt: drift.Value(_parseDate(json["updated_at"])),
+        isSynced: const drift.Value(true),
+      ),
+    ),
   ];
+
+  // Moves receipt photos between this device and file storage. Runs after the pull (so it
+  // knows about other devices' receipts) and before the push (so image_uploaded goes up now)
+  Future<void> _syncReceiptImages(String userId, Future<void> Function(String step, Future<void> Function() action) attempt) async
+  {
+    final receipts = await _db.receiptsDao.getAllForUser(userId);
+
+    for (final receipt in receipts)
+    {
+      // NOTE: Each photo is its own step, so one bad photo doesn't stop the rest
+      await attempt("receipt photo ${receipt.id}", () async {
+        if (receipt.isDeleted)
+        {
+          // Deleted on any device: remove the photo everywhere
+          await _receiptImages.delete(receipt.id);
+          if (receipt.imageUploaded)
+          {
+            await _remote.removeReceiptImage(userId, receipt.id);
+            await _db.receiptsDao.setImageUploaded(receipt.id, false);
+          }
+          return;
+        }
+
+        final localBytes = await _receiptImages.read(receipt.id);
+
+        if (!receipt.imageUploaded && localBytes != null)
+        {
+          // Taken on this device, not uploaded yet
+          await _remote.uploadReceiptImage(userId, receipt.id, localBytes);
+          await _db.receiptsDao.setImageUploaded(receipt.id, true);
+        }
+        else if (receipt.imageUploaded && localBytes == null)
+        {
+          // Taken on another device
+          await _receiptImages.save(receipt.id, await _remote.downloadReceiptImage(userId, receipt.id));
+        }
+      });
+    }
+  }
 
   Future<void> syncAllTransactionsFromTemplates(String userId) async
   {
@@ -341,7 +486,10 @@ class SyncEngine
     print("⚙️ 2. Generating missing fixed transactions locally...");
     await attempt("generate fixed transactions", () => syncAllTransactionsFromTemplates(userId));
 
-    print("☁️ 3. Pushing local changes to Supabase...");
+    print("🧾 3. Syncing receipt photos...");
+    await attempt("receipt photos", () => _syncReceiptImages(userId, attempt));
+
+    print("☁️ 4. Pushing local changes to Supabase...");
     for (final table in _tables)
     {
       await attempt("push ${table.name}", () => table.push(_remote, userId));

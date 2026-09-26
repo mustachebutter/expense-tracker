@@ -2,13 +2,18 @@ import 'dart:async';
 
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
+import 'package:expense_tracker/providers/receipt_scan_providers.dart';
+import 'package:expense_tracker/providers/settings_providers.dart';
+import 'package:expense_tracker/services/receipt_scanner.dart';
 import 'package:expense_tracker/providers/sync_providers.dart';
 import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'fake_receipts.dart';
@@ -52,6 +57,13 @@ Future<void> pumpApp(
   Stream<bool>? connectivity,
   FakeReceiptImageStore? receiptImages,
   FakeReceiptImagePicker? receiptPicker,
+  FakeReceiptCropper? receiptCropper,
+  // No GPS by default, like Windows
+  FakePlaceFinder? placeFinder,
+  FakeReceiptPhotoShrinker? photoShrinker,
+  // By default there's no scanner, like Windows. Pass a FakeReceiptScanner to act like a phone
+  ReceiptScanner? receiptScanner,
+  Map<String, Object> preferences = const {},
   List<Override> extraOverrides = const [],
 }) async
 {
@@ -63,6 +75,10 @@ Future<void> pumpApp(
 
   final authEvent = userId == null ? AuthChangeEvent.signedOut : AuthChangeEvent.signedIn;
 
+  // NOTE: A fresh, in-memory set of saved settings for every test
+  SharedPreferences.setMockInitialValues(preferences);
+  final sharedPreferences = await SharedPreferences.getInstance();
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -73,6 +89,13 @@ Future<void> pumpApp(
         connectivityProvider.overrideWith((ref) => connectivity ?? Stream.value(isOnline)),
         receiptImageStoreProvider.overrideWithValue(receiptImages ?? FakeReceiptImageStore()),
         receiptImagePickerProvider.overrideWithValue(receiptPicker ?? FakeReceiptImagePicker()),
+        receiptCropperProvider.overrideWithValue(receiptCropper ?? FakeReceiptCropper()),
+        placeFinderProvider.overrideWithValue(placeFinder ?? FakePlaceFinder(isAvailable: false)),
+        receiptPhotoShrinkerProvider.overrideWithValue(photoShrinker ?? FakeReceiptPhotoShrinker()),
+        receiptScannerProvider.overrideWithValue(receiptScanner ?? FakeReceiptScanner(isAvailable: false)),
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+        // Tests read dates day first, whatever the machine running them is set to
+        receiptDatesDayFirstProvider.overrideWithValue(true),
         ...extraOverrides,
       ],
       child: MaterialApp(home: child),

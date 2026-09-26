@@ -4,6 +4,7 @@ import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/sync_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../helpers/fake_receipts.dart';
 import '../helpers/fake_sync_remote.dart';
 import '../helpers/test_database.dart';
 
@@ -52,7 +53,7 @@ void main()
   setUp(() {
     db = createTestDatabase();
     remote = FakeSyncRemote();
-    engine = SyncEngine(db, remote);
+    engine = SyncEngine(db, remote, FakeReceiptImageStore());
   });
 
   tearDown(() => db.close());
@@ -216,7 +217,7 @@ void main()
     test("two offline devices generating the same month end up with one transaction", () async {
       final deviceB = createTestDatabase();
       addTearDown(deviceB.close);
-      final engineB = SyncEngine(deviceB, remote);
+      final engineB = SyncEngine(deviceB, remote, FakeReceiptImageStore());
 
       // Both devices already have the same category and template from an earlier sync
       for (final device in [db, deviceB])

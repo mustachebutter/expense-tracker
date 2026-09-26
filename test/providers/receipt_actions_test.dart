@@ -5,8 +5,10 @@ import 'package:drift/drift.dart' show Value;
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
+import 'package:expense_tracker/providers/transaction_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 import '../helpers/fake_receipts.dart';
 import '../helpers/test_database.dart';
@@ -67,8 +69,17 @@ void main()
       final saved = await reload(receipt.id);
       expect(saved.userId, userA);
       expect(saved.merchant, isNull);
-      expect(saved.scanStatus, ReceiptScanStatus.notScanned);
+      expect(saved.scanStatus, ReceiptScanStatus.waiting, reason: "every new photo is queued for the scanner");
       expect(saved.isSynced, isFalse);
+    });
+
+    test("addFromImage stores a shrunk copy of a big photo", () async {
+      final bigPhoto = img.encodePng(img.Image(width: 4000, height: 3000));
+
+      final receipt = await actions().addFromImage(bigPhoto);
+
+      final stored = img.decodeImage(images.images[receipt.id]!)!;
+      expect((stored.width, stored.height), (2000, 1500));
     });
 
     test("update follows the sync rules and refuses another user's receipt", () async {
@@ -166,6 +177,62 @@ void main()
       container.read(receiptFilterProvider.notifier).selectCategory(null);
       container.read(receiptFilterProvider.notifier).search("");
       expect(shown(), hasLength(3));
+    });
+  });
+
+  group("splitting", () {
+    test("your share is the total, an equal part, or the amount you typed", () async {
+      final whole = await insertReceipt(db, total: 30);
+      expect((whole.isSplit, whole.myShare), (false, 30.0));
+
+      final equal = whole.copyWith(splitPeople: const Value(3));
+      expect((equal.isSplit, equal.myShare), (true, 10.0));
+
+      // NOTE: 10 / 3 people is rounded to cents, not 3.3333...
+      expect(whole.copyWith(total: const Value(10), splitPeople: const Value(3)).myShare, 3.33);
+
+      final custom = whole.copyWith(splitAmount: const Value(12.5));
+      expect((custom.isSplit, custom.myShare), (true, 12.5));
+
+      expect((await insertReceipt(db)).myShare, isNull, reason: "no total yet");
+    });
+
+    test("a split receipt only adds your share as a transaction", () async {
+      final food = await insertCategory(db, name: "Food");
+      final receipt = await insertReceipt(db, merchant: "Pizza night", total: 60);
+
+      await actions().addAsTransaction(receipt.copyWith(splitPeople: const Value(4)), food);
+
+      expect((await db.transactionsDao.getAll()).single.amount, 15.0);
+    });
+
+    test("changing the split later updates the linked transaction", () async {
+      final food = await insertCategory(db, name: "Food");
+      final receipt = await insertReceipt(db, merchant: "Pizza night", total: 60);
+      await actions().addAsTransaction(receipt, food);
+      final linked = await reload(receipt.id);
+      final transactionBefore = (await db.transactionsDao.getAll()).single;
+      expect(transactionBefore.amount, 60.0);
+
+      await actions().update(linked.copyWith(splitPeople: const Value(3)));
+
+      final transactionAfter = (await db.transactionsDao.getAll()).single;
+      expect(transactionAfter.amount, 20.0);
+      expect(transactionAfter.isSynced, isFalse, reason: "the new amount has to sync too");
+      expect(transactionAfter.updatedAt.isAfter(transactionBefore.updatedAt), isTrue);
+    });
+
+    test("a deleted linked transaction isn't brought back", () async {
+      final food = await insertCategory(db, name: "Food");
+      final receipt = await insertReceipt(db, total: 60);
+      await actions().addAsTransaction(receipt, food);
+      final linked = await reload(receipt.id);
+      await container.read(transactionActionsProvider).softDeleteById(linked.transactionId!);
+
+      await actions().update(linked.copyWith(splitPeople: const Value(2)));
+
+      final transaction = (await db.transactionsDao.getAll()).single;
+      expect((transaction.isDeleted, transaction.amount), (true, 60.0));
     });
   });
 }

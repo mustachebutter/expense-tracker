@@ -50,6 +50,12 @@ dependencies:
   connectivity_plus: ^7.3.1
   flutter_colorpicker: ^1.1.0
   image_picker: ^1.2.3
+  google_mlkit_text_recognition: ^0.17.1
+  shared_preferences: ^2.5.5
+  image: ^4.10.1
+  google_mlkit_document_scanner: ^0.6.1
+  geolocator: ^14.1.0
+  geocoding: ^5.0.0
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +70,8 @@ dev_dependencies:
   drift_dev: ^2.33.0
   build_runner: ^2.15.0
   flutter_launcher_icons: ^0.14.4
+  geolocator_platform_interface: ^4.4.0
+  plugin_platform_interface: ^2.1.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

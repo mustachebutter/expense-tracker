@@ -8,6 +8,29 @@ import 'package:flutter_test/flutter_test.dart';
 import '../helpers/schema_v1.dart';
 import '../helpers/test_database.dart';
 
+// The receipt columns each schema version added. To make an "old" database for a test,
+// build today's schema and drop every column added after the version being tested
+const Map<int, List<String>> receiptColumnsAddedIn = {
+  5: ["image_uploaded"],
+  6: ["image_quarter_turns", "split_people", "split_amount"],
+  7: ["crop_corners"],
+  8: ["city", "state", "country"],
+  9: ["suburb", "pending_latitude", "pending_longitude"],
+};
+
+Future<void> dropReceiptColumnsAfter(AppDatabase db, int version) async
+{
+  for (final entry in receiptColumnsAddedIn.entries)
+  {
+    if (entry.key <= version) continue;
+    for (final column in entry.value)
+    {
+      await db.customStatement("ALTER TABLE receipts DROP COLUMN $column");
+    }
+  }
+  await db.customStatement("PRAGMA user_version = $version");
+}
+
 void main()
 {
   // NOTE: This simulates a user updating the app. Their db.sqlite is still on version 1,
@@ -111,6 +134,117 @@ void main()
     expect(await db.receiptsDao.getUnsynced("user-a"), hasLength(1));
 
     final version = await db.customSelect("PRAGMA user_version").getSingle();
-    expect(version.read<int>("user_version"), 4);
+    expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  test("upgrading a version 4 database adds image_uploaded to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    // A version 4 database: receipts without the columns versions 5 and 6 added
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(userId: "user-a", merchant: const Value("Kept")));
+    await dropReceiptColumnsAfter(oldDb, 4);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect(receipt.merchant, "Kept");
+    expect(receipt.imageUploaded, isFalse, reason: "existing photos haven't been uploaded yet");
+
+    final version = await db.customSelect("PRAGMA user_version").getSingle();
+    expect(version.read<int>("user_version"), db.schemaVersion);
+  });
+
+  test("upgrading a version 5 database adds rotation and splitting to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      imageUploaded: const Value(true),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 5);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.imageUploaded), ("Kept", true));
+    expect((receipt.imageQuarterTurns, receipt.splitPeople, receipt.splitAmount), (0, null, null));
+  });
+
+  test("upgrading a version 6 database adds cropping to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      imageQuarterTurns: const Value(1),
+      splitPeople: const Value(3),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 6);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.imageQuarterTurns, receipt.splitPeople), ("Kept", 1, 3));
+    expect(receipt.cropCorners, isNull, reason: "existing receipts show the whole photo");
+  });
+
+  test("upgrading a version 7 database adds a location to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      cropCorners: const Value("0,0,1,0,1,1,0,1"),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 7);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.cropCorners), ("Kept", "0,0,1,0,1,1,0,1"));
+    expect((receipt.city, receipt.state, receipt.country), (null, null, null));
+  });
+
+  test("upgrading a version 8 database adds suburbs to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      city: const Value("Toronto"),
+      country: const Value("Canada"),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 8);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.city, receipt.country), ("Toronto", "Canada"));
+    expect((receipt.suburb, receipt.pendingLatitude, receipt.pendingLongitude), (null, null, null));
   });
 }

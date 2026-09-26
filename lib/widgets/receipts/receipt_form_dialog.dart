@@ -390,7 +390,9 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
                 PlaceProblem.locationOff => "Location is turned off on this phone. Turn it on and try again.",
                 PlaceProblem.permissionDenied => "The app needs location permission to fill this in.",
                 PlaceProblem.permissionBlocked => "Location permission is blocked for this app. You can allow it in Settings.",
-                PlaceProblem.notFound => "Couldn't work out where you are. Try again, or type it in.",
+                PlaceProblem.noPosition => "Couldn't get your position in time. Indoors this can take a while, try again in a moment.",
+                PlaceProblem.noPlaceName => "Found your position, but couldn't look up the place name. That needs an internet connection.",
+                PlaceProblem.unavailable => "Location isn't working in this version of the app. Type the place in instead.",
               }),
             ),
             if (_locationProblem == PlaceProblem.permissionBlocked)

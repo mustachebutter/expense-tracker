@@ -9,6 +9,7 @@ import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/services/receipt_photo_shrinker.dart';
 import 'package:expense_tracker/services/receipt_scanner.dart';
 
 import 'package:image/image.dart' as img;
@@ -187,4 +188,17 @@ class FakePlaceFinder implements PlaceFinder
 
   @override
   Future<void> openSettings() async => settingsOpened++;
+}
+
+// Hands photos straight back, and remembers what it was given
+class FakeReceiptPhotoShrinker implements ReceiptPhotoShrinker
+{
+  final List<Uint8List> shrunk = [];
+
+  @override
+  Future<Uint8List> shrink(Uint8List photo) async
+  {
+    shrunk.add(photo);
+    return photo;
+  }
 }

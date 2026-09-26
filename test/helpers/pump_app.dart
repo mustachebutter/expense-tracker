@@ -90,6 +90,7 @@ Future<void> pumpApp(
         receiptImagePickerProvider.overrideWithValue(receiptPicker ?? FakeReceiptImagePicker()),
         receiptCropperProvider.overrideWithValue(receiptCropper ?? FakeReceiptCropper()),
         placeFinderProvider.overrideWithValue(placeFinder ?? FakePlaceFinder(isAvailable: false)),
+        receiptPhotoShrinkerProvider.overrideWithValue(FakeReceiptPhotoShrinker()),
         receiptScannerProvider.overrideWithValue(receiptScanner ?? FakeReceiptScanner(isAvailable: false)),
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         // Tests read dates day first, whatever the machine running them is set to

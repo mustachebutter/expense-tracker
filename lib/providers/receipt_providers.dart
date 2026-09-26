@@ -8,6 +8,7 @@ import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/transaction_providers.dart';
 import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/services/receipt_photo_shrinker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -18,6 +19,8 @@ export 'package:expense_tracker/providers/core_providers.dart' show receiptImage
 final receiptImagePickerProvider = Provider<ReceiptImagePicker>((ref) => ReceiptImagePicker());
 
 final placeFinderProvider = Provider<PlaceFinder>((ref) => PlaceFinder());
+
+final receiptPhotoShrinkerProvider = Provider<ReceiptPhotoShrinker>((ref) => ReceiptPhotoShrinker());
 
 extension ReceiptSplit on Receipt
 {
@@ -151,13 +154,15 @@ class ReceiptActions
   ReceiptsDao get _dao => _db.receiptsDao;
   ReceiptImageStore get _images => _ref.read(receiptImageStoreProvider);
 
-  // Saves the photo, then creates the receipt that points at it. Fields are filled in later
+  // Shrinks and saves the photo, then creates the receipt that points at it. Fields are
+  // filled in later. [imageBytes] can come from anywhere: camera, gallery, document scanner,
+  // a file on Windows, this is the one place they all go through
   Future<Receipt> addFromImage(Uint8List imageBytes) async
   {
     final userId = _ref.requireUserId();
     final id = const Uuid().v4();
 
-    await _images.save(id, imageBytes);
+    await _images.save(id, await _ref.read(receiptPhotoShrinkerProvider).shrink(imageBytes));
     try
     {
       // NOTE: Every new receipt waits for the scanner. On a phone that's a second away, on

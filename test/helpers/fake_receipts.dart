@@ -1,9 +1,17 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'dart:ui' show Offset, Size;
+
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/database.dart';
+import 'package:expense_tracker/providers/receipt_crop_providers.dart';
+import 'package:expense_tracker/services/place_finder.dart';
+import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/services/receipt_scanner.dart';
+
+import 'package:image/image.dart' as img;
 
 import 'test_database.dart';
 
@@ -23,7 +31,34 @@ class FakeReceiptImageStore extends ReceiptImageStore
   }
 
   @override
-  Future<void> delete(String receiptId) async => images.remove(receiptId);
+  Future<Uint8List?> read(String receiptId) async => images[receiptId];
+
+  @override
+  Future<bool> exists(String receiptId) async => images.containsKey(receiptId);
+
+  // Cropped copies, keyed "<receipt id>/<crop key>"
+  final Map<String, Uint8List> croppedImages = {};
+
+  @override
+  Future<File> croppedFileFor(String receiptId, String cropKey) async
+  {
+    return File("${Directory.systemTemp.path}/${receiptId}_crop_$cropKey.jpg");
+  }
+
+  @override
+  Future<File> saveCropped(String receiptId, String cropKey, Uint8List bytes) async
+  {
+    croppedImages.removeWhere((key, _) => key.startsWith("$receiptId/"));
+    croppedImages["$receiptId/$cropKey"] = bytes;
+    return croppedFileFor(receiptId, cropKey);
+  }
+
+  @override
+  Future<void> delete(String receiptId) async
+  {
+    images.remove(receiptId);
+    croppedImages.removeWhere((key, _) => key.startsWith("$receiptId/"));
+  }
 }
 
 // Pretends the user picked [nextImage] (or cancelled, if it's null)
@@ -32,10 +67,13 @@ class FakeReceiptImagePicker implements ReceiptImagePicker
   @override
   final bool canUseCamera;
 
+  @override
+  final bool canScanDocuments;
+
   Uint8List? nextImage = Uint8List.fromList([1, 2, 3]);
   final List<ReceiptImageSource> requestedSources = [];
 
-  FakeReceiptImagePicker({this.canUseCamera = false});
+  FakeReceiptImagePicker({this.canUseCamera = false, this.canScanDocuments = false});
 
   @override
   Future<Uint8List?> pick(ReceiptImageSource source) async
@@ -75,4 +113,78 @@ Future<Receipt> insertReceipt(
       createdAt: createdAt == null ? const Value.absent() : Value(createdAt),
     ),
   );
+}
+
+// Pretends to read [rows] off every photo (or to fail, if [failWith] is set).
+// [rowsWhenTurned] simulates a sideways photo: the text only makes sense turned that many times
+class FakeReceiptScanner implements ReceiptScanner
+{
+  @override
+  final bool isAvailable;
+
+  List<String> rows;
+  Map<int, List<String>>? rowsWhenTurned;
+  Object? failWith;
+  final List<String> scannedPaths = [];
+  final List<int> triedTurns = [];
+
+  FakeReceiptScanner({this.isAvailable = true, this.rows = const [], this.rowsWhenTurned});
+
+  @override
+  Future<List<String>> readRows(File image, {int quarterTurns = 0}) async
+  {
+    scannedPaths.add(image.path);
+    triedTurns.add(quarterTurns);
+    if (failWith != null) throw failWith!;
+    if (rowsWhenTurned != null) return rowsWhenTurned![quarterTurns] ?? const ["~~ garbled ~~"];
+    return quarterTurns == 0 ? rows : const [];
+  }
+}
+
+// Crops without decoding real photos. [detected] is what "auto-detect" finds (null: nothing)
+class FakeReceiptCropper implements ReceiptCropper
+{
+  ReceiptCorners? detected;
+  final List<ReceiptCorners> renderedCorners = [];
+
+  FakeReceiptCropper({this.detected});
+
+  @override
+  Future<CropEditorImage> prepare(Uint8List photo, int quarterTurns) async
+  {
+    // A real (tiny) image, so the editor has something it can show
+    return (preview: img.encodePng(img.Image(width: 3, height: 4)), size: const Size(300, 400), detected: detected);
+  }
+
+  @override
+  Future<Uint8List> render(Uint8List photo, int quarterTurns, ReceiptCorners corners) async
+  {
+    renderedCorners.add(corners);
+    return Uint8List.fromList([7, 7, 7]);
+  }
+}
+
+const ReceiptCorners sampleCorners = [Offset(0.1, 0.1), Offset(0.9, 0.1), Offset(0.9, 0.9), Offset(0.1, 0.9)];
+
+// Pretends to be somewhere ([place]), or to fail with [problem]
+class FakePlaceFinder implements PlaceFinder
+{
+  @override
+  final bool isAvailable;
+
+  FoundPlace place;
+  PlaceProblem? problem;
+  var settingsOpened = 0;
+
+  FakePlaceFinder({this.isAvailable = true, this.place = (city: "Hanoi", state: "Hà Nội", country: "Vietnam"), this.problem});
+
+  @override
+  Future<FoundPlace> findCurrentPlace() async
+  {
+    if (problem != null) throw PlaceNotFound(problem!);
+    return place;
+  }
+
+  @override
+  Future<void> openSettings() async => settingsOpened++;
 }

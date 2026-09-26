@@ -1,13 +1,16 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:win32_registry/win32_registry.dart';
+import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/providers/theme_provider.dart';
 import 'package:expense_tracker/screens/auth_gate.dart';
+import 'package:expense_tracker/theme/control_themes.dart';
 import 'package:expense_tracker/theme/money_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async{
@@ -23,8 +26,12 @@ void main() async{
   );
   
   // await signInTestUser();
+  // NOTE: Loaded before the app starts so settings can be read without waiting
+  final preferences = await SharedPreferences.getInstance();
+
   runApp(
     ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
       child: TransactionApp()
     )
   );
@@ -151,6 +158,13 @@ class TransactionApp extends ConsumerWidget {
     useMaterial3: true,
     brightness: Brightness.light,
     extensions: const [MoneyColors.light],
+    // NOTE: See ControlThemes, without these, switches and checkboxes were white on white
+    checkboxTheme: ControlThemes.light.checkbox,
+    radioTheme: ControlThemes.light.radio,
+    switchTheme: ControlThemes.light.switchTheme,
+    progressIndicatorTheme: ControlThemes.light.progressIndicator,
+    textSelectionTheme: ControlThemes.light.textSelection,
+    datePickerTheme: ControlThemes.light.datePicker,
     colorScheme: ColorScheme.light(
       primary: Colors.white,
       secondary:Color(0xFFF5F5F5),
@@ -250,6 +264,13 @@ class TransactionApp extends ConsumerWidget {
     useMaterial3: true,
     brightness: Brightness.dark,
     extensions: const [MoneyColors.dark],
+    // NOTE: See ControlThemes, without these, switches and checkboxes were black on black
+    checkboxTheme: ControlThemes.dark.checkbox,
+    radioTheme: ControlThemes.dark.radio,
+    switchTheme: ControlThemes.dark.switchTheme,
+    progressIndicatorTheme: ControlThemes.dark.progressIndicator,
+    textSelectionTheme: ControlThemes.dark.textSelection,
+    datePickerTheme: ControlThemes.dark.datePicker,
     colorScheme: ColorScheme.dark(
       primary: Color(0xFF1E1E1E),
       secondary:Color(0xFF1A1A1A),

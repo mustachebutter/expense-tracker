@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos of your receipts to keep them with your expenses.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Fill in which city and country a receipt is from. Only the place names are saved.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Import receipt photos you already took.</string>
 	<key>LSRequiresIPhoneOS</key>

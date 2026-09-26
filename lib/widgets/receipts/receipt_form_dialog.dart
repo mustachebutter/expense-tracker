@@ -5,6 +5,7 @@ import 'package:expense_tracker/providers/category_providers.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/receipt_scan_providers.dart';
+import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/widgets/forms/form_helpers.dart';
 import 'package:expense_tracker/widgets/forms/place_field.dart';
@@ -55,6 +56,9 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   String? _cropCorners;
   bool _addAsTransaction = false;
   bool _isScanning = false;
+  bool _isLocating = false;
+  // Why "Use my location" didn't work, shown under the button until the next try
+  PlaceProblem? _locationProblem;
 
   // Splitting the bill: equally between a number of people, or a share the user types
   late bool _isSplit;
@@ -324,12 +328,75 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     if (mounted) Navigator.pop(context, true);
   }
 
+  // Fills the place fields from where the phone is right now. The user tapped for it, so it
+  // replaces what's there
+  Future<void> _useMyLocation() async
+  {
+    final finder = ref.read(placeFinderProvider);
+    setState(() {
+      _isLocating = true;
+      _locationProblem = null;
+    });
+
+    try
+    {
+      final place = await finder.findCurrentPlace();
+      if (!mounted) return;
+      setState(() {
+        _cityController.text = place.city ?? "";
+        _stateController.text = place.state ?? "";
+        _countryController.text = place.country ?? "";
+      });
+    }
+    on PlaceNotFound catch (e)
+    {
+      // NOTE: Shown inside the form, not as a snackbar: a snackbar would sit behind this
+      // dialog, where its Settings button couldn't be tapped
+      if (mounted) setState(() => _locationProblem = e.problem);
+    }
+    finally
+    {
+      if (mounted) setState(() => _isLocating = false);
+    }
+  }
+
   List<Widget> _locationFields()
   {
     final places = ref.watch(allReceiptPlacesProvider);
+    final bool canLocate = ref.watch(placeFinderProvider).isAvailable;
 
     return [
-      const Text("Where", style: TextStyle(fontWeight: FontWeight.bold)),
+      Row(
+        children: [
+          const Expanded(child: Text("Where", style: TextStyle(fontWeight: FontWeight.bold))),
+          if (canLocate)
+            TextButton.icon(
+              onPressed: _isLocating ? null : _useMyLocation,
+              icon: _isLocating
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.my_location),
+              label: const Text("Use my location"),
+            ),
+        ],
+      ),
+      if (_locationProblem != null)
+        Row(
+          key: const Key("location_problem"),
+          spacing: 8,
+          children: [
+            const Icon(Icons.location_off_outlined, size: 18),
+            Expanded(
+              child: Text(switch (_locationProblem!) {
+                PlaceProblem.locationOff => "Location is turned off on this phone. Turn it on and try again.",
+                PlaceProblem.permissionDenied => "The app needs location permission to fill this in.",
+                PlaceProblem.permissionBlocked => "Location permission is blocked for this app. You can allow it in Settings.",
+                PlaceProblem.notFound => "Couldn't work out where you are. Try again, or type it in.",
+              }),
+            ),
+            if (_locationProblem == PlaceProblem.permissionBlocked)
+              TextButton(onPressed: ref.read(placeFinderProvider).openSettings, child: const Text("Settings")),
+          ],
+        ),
       PlaceField(label: "City", icon: Icons.location_city, controller: _cityController, suggestions: places.cities),
       PlaceField(label: "State / region", icon: Icons.map_outlined, controller: _stateController, suggestions: places.states),
       PlaceField(label: "Country", icon: Icons.public, controller: _countryController, suggestions: places.countries),

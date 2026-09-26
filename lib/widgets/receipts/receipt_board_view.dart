@@ -13,7 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ReceiptBoardView extends ConsumerStatefulWidget
 {
   static const Size boardSize = Size(2400, 1600);
-  static const Size cardSize = Size(160, 240);
+  // NOTE: Tall enough for the sticker and a two line name tag (name, then city)
+  static const Size cardSize = Size(160, 256);
 
   const ReceiptBoardView({super.key});
 
@@ -173,6 +174,8 @@ class _BoardCard extends StatelessWidget
       receipt.merchant ?? "Untitled",
       if (receipt.total != null) "\$${receipt.total!.toStringAsFixed(2)}",
     ].join(" · ");
+    // NOTE: The city is what's useful at a glance, the country when there's no city
+    final String? place = receipt.city ?? receipt.country;
 
     return Positioned(
       left: position.dx,
@@ -225,7 +228,7 @@ class _BoardCard extends StatelessWidget
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // A little name tag under the sticker
+                  // A little name tag under the sticker, with the city (or country) under the name
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -233,11 +236,33 @@ class _BoardCard extends StatelessWidget
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(0, 1))],
                     ),
-                    child: Text(
-                      caption,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                        if (place != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 2,
+                            children: [
+                              const Icon(Icons.place, size: 11, color: Colors.black54),
+                              Flexible(
+                                child: Text(
+                                  place,
+                                  key: Key("sticker_place_${receipt.id}"),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.black54, fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
                 ],

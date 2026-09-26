@@ -6,8 +6,10 @@ import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/settings_providers.dart';
 import 'package:expense_tracker/screens/receipts.dart';
 import 'package:expense_tracker/screens/settings.dart';
+import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/widgets/receipts/receipt_board_view.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_list_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -432,5 +434,80 @@ void main()
       expect(fieldText(tester, "City"), "Hanoi");
       expect(fieldText(tester, "Country"), "Vietnam");
     });
+  });
+
+  group("use my location", () {
+    Future<void> openReceipt(WidgetTester tester, FakePlaceFinder finder) async
+    {
+      await insertReceipt(db, merchant: "Pho 24");
+      await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos,
+        receiptScanner: FakeReceiptScanner(isAvailable: false), placeFinder: finder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ReceiptCard, "Pho 24"));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("fills in the city, state and country from where the phone is", (tester) async {
+      await openReceipt(tester, FakePlaceFinder());
+
+      await tester.enterText(find.widgetWithText(TextFormField, "City"), "Typed before");
+      await tester.tap(find.text("Use my location"));
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester, "City"), "Hanoi", reason: "the user asked for it, so it replaces what was there");
+      expect(fieldText(tester, "State / region"), "Hà Nội");
+      expect(fieldText(tester, "Country"), "Vietnam");
+
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect((saved.city, saved.country), ("Hanoi", "Vietnam"));
+    });
+
+    testWidgets("isn't offered where there's no GPS, like Windows", (tester) async {
+      await openReceipt(tester, FakePlaceFinder(isAvailable: false));
+
+      expect(find.text("Use my location"), findsNothing);
+    });
+
+    testWidgets("says why when it can't, and leaves the fields alone", (tester) async {
+      final finder = FakePlaceFinder(problem: PlaceProblem.locationOff);
+      await openReceipt(tester, finder);
+      await tester.enterText(find.widgetWithText(TextFormField, "City"), "Kept");
+
+      await tester.tap(find.text("Use my location"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Location is turned off on this phone. Turn it on and try again."), findsOneWidget);
+      expect(fieldText(tester, "City"), "Kept");
+    });
+
+    testWidgets("a blocked permission offers a way to the phone's settings", (tester) async {
+      final finder = FakePlaceFinder(problem: PlaceProblem.permissionBlocked);
+      await openReceipt(tester, finder);
+
+      await tester.tap(find.text("Use my location"));
+      await tester.pumpAndSettle();
+      // NOTE: Inside the form, not a snackbar behind the dialog where it couldn't be tapped
+      await tester.tap(find.descendant(of: find.byKey(const Key("location_problem")), matching: find.text("Settings")));
+      await tester.pumpAndSettle();
+
+      expect(finder.settingsOpened, 1);
+    });
+  });
+
+  testWidgets("stickers on the board show the city under the name, or the country without one", (tester) async {
+    final hanoi = await insertReceipt(db, merchant: "Pho 24", isFavorite: true, boardX: 40, boardY: 40);
+    await db.receiptsDao.updateRow(hanoi.copyWith(city: const Value("Hanoi"), country: const Value("Vietnam")));
+    final countryOnly = await insertReceipt(db, merchant: "Duty free", isFavorite: true, boardX: 300, boardY: 40);
+    await db.receiptsDao.updateRow(countryOnly.copyWith(country: const Value("Japan")));
+    final nowhere = await insertReceipt(db, merchant: "Somewhere", isFavorite: true, boardX: 560, boardY: 40);
+
+    await pumpApp(tester, const Scaffold(body: ReceiptBoardView()), db: db, receiptImages: photos);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.byKey(Key("sticker_place_${hanoi.id}"))).data, "Hanoi");
+    expect(tester.widget<Text>(find.byKey(Key("sticker_place_${countryOnly.id}"))).data, "Japan");
+    expect(find.byKey(Key("sticker_place_${nowhere.id}")), findsNothing);
   });
 }

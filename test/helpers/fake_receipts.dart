@@ -6,6 +6,7 @@ import 'dart:ui' show Offset, Size;
 import 'package:drift/drift.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/receipt_crop_providers.dart';
+import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/services/receipt_scanner.dart';
@@ -164,3 +165,26 @@ class FakeReceiptCropper implements ReceiptCropper
 }
 
 const ReceiptCorners sampleCorners = [Offset(0.1, 0.1), Offset(0.9, 0.1), Offset(0.9, 0.9), Offset(0.1, 0.9)];
+
+// Pretends to be somewhere ([place]), or to fail with [problem]
+class FakePlaceFinder implements PlaceFinder
+{
+  @override
+  final bool isAvailable;
+
+  FoundPlace place;
+  PlaceProblem? problem;
+  var settingsOpened = 0;
+
+  FakePlaceFinder({this.isAvailable = true, this.place = (city: "Hanoi", state: "Hà Nội", country: "Vietnam"), this.problem});
+
+  @override
+  Future<FoundPlace> findCurrentPlace() async
+  {
+    if (problem != null) throw PlaceNotFound(problem!);
+    return place;
+  }
+
+  @override
+  Future<void> openSettings() async => settingsOpened++;
+}

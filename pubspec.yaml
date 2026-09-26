@@ -54,6 +54,8 @@ dependencies:
   shared_preferences: ^2.5.5
   image: ^4.10.1
   google_mlkit_document_scanner: ^0.6.1
+  geolocator: ^14.1.0
+  geocoding: ^5.0.0
 
 dev_dependencies:
   flutter_test:

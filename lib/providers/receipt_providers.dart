@@ -6,6 +6,7 @@ import 'package:expense_tracker/daos/receipts_dao.dart';
 import 'package:expense_tracker/database.dart';
 import 'package:expense_tracker/providers/core_providers.dart';
 import 'package:expense_tracker/providers/transaction_providers.dart';
+import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -15,6 +16,8 @@ import 'package:uuid/uuid.dart';
 export 'package:expense_tracker/providers/core_providers.dart' show receiptImageStoreProvider;
 
 final receiptImagePickerProvider = Provider<ReceiptImagePicker>((ref) => ReceiptImagePicker());
+
+final placeFinderProvider = Provider<PlaceFinder>((ref) => PlaceFinder());
 
 extension ReceiptSplit on Receipt
 {

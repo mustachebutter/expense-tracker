@@ -14,6 +14,7 @@ const Map<int, List<String>> receiptColumnsAddedIn = {
   5: ["image_uploaded"],
   6: ["image_quarter_turns", "split_people", "split_amount"],
   7: ["crop_corners"],
+  8: ["city", "state", "country"],
 };
 
 Future<void> dropReceiptColumnsAfter(AppDatabase db, int version) async
@@ -200,5 +201,27 @@ void main()
     final receipt = (await db.receiptsDao.getAll()).single;
     expect((receipt.merchant, receipt.imageQuarterTurns, receipt.splitPeople), ("Kept", 1, 3));
     expect(receipt.cropCorners, isNull, reason: "existing receipts show the whole photo");
+  });
+
+  test("upgrading a version 7 database adds a location to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      merchant: const Value("Kept"),
+      cropCorners: const Value("0,0,1,0,1,1,0,1"),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 7);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.merchant, receipt.cropCorners), ("Kept", "0,0,1,0,1,1,0,1"));
+    expect((receipt.city, receipt.state, receipt.country), (null, null, null));
   });
 }

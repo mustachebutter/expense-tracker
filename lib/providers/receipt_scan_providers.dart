@@ -117,11 +117,21 @@ class ReceiptScanService
     final categoryId = latest.categoryId
       ?? (merchant == null ? null : await _db.receiptsDao.categoryUsedBefore(merchant, userId));
 
+    // Same idea for the location: a shop you've been to before is probably in the same place.
+    // Only when the receipt has no location yet, so a typed one is never replaced
+    final hasLocation = latest.city != null || latest.state != null || latest.country != null;
+    final sameShop = (hasLocation || merchant == null)
+      ? null
+      : await _db.receiptsDao.locationUsedBefore(merchant, userId, exceptId: latest.id);
+
     return actions.update(latest.copyWith(
       merchant: Value(merchant),
       total: Value(pick(latest.total, parsed.total)),
       date: Value(pick(latest.date, parsed.date)),
       categoryId: Value(categoryId),
+      city: Value(latest.city ?? sameShop?.city),
+      state: Value(latest.state ?? sameShop?.state),
+      country: Value(latest.country ?? sameShop?.country),
       // NOTE: Saved as a pair: the crop corners only make sense with the rotation they were
       // drawn on, so keep the two that were actually read together
       imageQuarterTurns: reading.quarterTurns,

@@ -43,19 +43,39 @@ final receiptsProvider = StreamProvider<List<Receipt>>((ref) {
 });
 
 // What the receipts list is showing: one category (null = all) and a search on the shop name
-typedef ReceiptFilter = ({String? categoryId, String search});
+// What the receipts list is showing: one category (null = all), a search on the shop name,
+// and a place: a country, and a city in it (null = anywhere)
+typedef ReceiptFilter = ({String? categoryId, String search, String? country, String? city});
 
 class ReceiptFilterNotifier extends Notifier<ReceiptFilter>
 {
   @override
-  ReceiptFilter build() => (categoryId: null, search: "");
+  ReceiptFilter build() => (categoryId: null, search: "", country: null, city: null);
 
-  void selectCategory(String? categoryId) => state = (categoryId: categoryId, search: state.search);
+  void selectCategory(String? categoryId) =>
+    state = (categoryId: categoryId, search: state.search, country: state.country, city: state.city);
 
-  void search(String text) => state = (categoryId: state.categoryId, search: text);
+  void search(String text) =>
+    state = (categoryId: state.categoryId, search: text, country: state.country, city: state.city);
+
+  // NOTE: Picking a country clears the city, which may be in another country
+  void selectCountry(String? country) =>
+    state = (categoryId: state.categoryId, search: state.search, country: country, city: null);
+
+  void selectCity(String? city) =>
+    state = (categoryId: state.categoryId, search: state.search, country: state.country, city: city);
 }
 
 final receiptFilterProvider = NotifierProvider<ReceiptFilterNotifier, ReceiptFilter>(ReceiptFilterNotifier.new);
+
+// NOTE: Places are free text, so "Sydney", "sydney " and "SYDNEY" all count as the same place
+String? placeKey(String? place)
+{
+  final trimmed = place?.trim().toLowerCase();
+  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+}
+
+bool samePlace(String? a, String? b) => placeKey(a) != null && placeKey(a) == placeKey(b);
 
 final filteredReceiptsProvider = Provider<AsyncValue<List<Receipt>>>((ref) {
   final filter = ref.watch(receiptFilterProvider);
@@ -64,8 +84,49 @@ final filteredReceiptsProvider = Provider<AsyncValue<List<Receipt>>>((ref) {
   return ref.watch(receiptsProvider).whenData((receipts) => receipts.where((receipt) {
     if (filter.categoryId != null && receipt.categoryId != filter.categoryId) return false;
     if (search.isNotEmpty && !(receipt.merchant ?? "").toLowerCase().contains(search)) return false;
+    if (filter.country != null && !samePlace(receipt.country, filter.country)) return false;
+    if (filter.city != null && !samePlace(receipt.city, filter.city)) return false;
     return true;
   }).toList());
+});
+
+// Every different value of one place field across the user's receipts, spelled the way it
+// was first written, in alphabetical order
+List<String> _distinctPlaces(Iterable<String?> values)
+{
+  final byKey = <String, String>{};
+  for (final value in values)
+  {
+    final key = placeKey(value);
+    if (key != null) byKey.putIfAbsent(key, () => value!.trim());
+  }
+  return byKey.values.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+}
+
+typedef ReceiptPlaces = ({List<String> countries, List<String> states, List<String> cities});
+
+// The places the user has used, for the filter menus and the suggestions while typing.
+// Cities follow the filter's country when one is picked
+final receiptPlacesProvider = Provider<ReceiptPlaces>((ref) {
+  final receipts = ref.watch(receiptsProvider).value ?? [];
+  final country = ref.watch(receiptFilterProvider.select((filter) => filter.country));
+  final inCountry = country == null ? receipts : receipts.where((r) => samePlace(r.country, country));
+
+  return (
+    countries: _distinctPlaces(receipts.map((r) => r.country)),
+    states: _distinctPlaces(receipts.map((r) => r.state)),
+    cities: _distinctPlaces(inCountry.map((r) => r.city)),
+  );
+});
+
+// All the places the user has typed, whatever the filter says. For suggestions while typing
+final allReceiptPlacesProvider = Provider<ReceiptPlaces>((ref) {
+  final receipts = ref.watch(receiptsProvider).value ?? [];
+  return (
+    countries: _distinctPlaces(receipts.map((r) => r.country)),
+    states: _distinctPlaces(receipts.map((r) => r.state)),
+    cities: _distinctPlaces(receipts.map((r) => r.city)),
+  );
 });
 
 // The receipts pinned on the board, bottom of the pile first so the last one is drawn on top

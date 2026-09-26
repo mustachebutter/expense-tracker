@@ -3301,6 +3301,35 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _cityMeta = const VerificationMeta('city');
+  @override
+  late final GeneratedColumn<String> city = GeneratedColumn<String>(
+    'city',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countryMeta = const VerificationMeta(
+    'country',
+  );
+  @override
+  late final GeneratedColumn<String> country = GeneratedColumn<String>(
+    'country',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -3511,6 +3540,9 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     userId,
     merchant,
     total,
+    city,
+    state,
+    country,
     date,
     categoryId,
     transactionId,
@@ -3562,6 +3594,24 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
       context.handle(
         _totalMeta,
         total.isAcceptableOrUnknown(data['total']!, _totalMeta),
+      );
+    }
+    if (data.containsKey('city')) {
+      context.handle(
+        _cityMeta,
+        city.isAcceptableOrUnknown(data['city']!, _cityMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('country')) {
+      context.handle(
+        _countryMeta,
+        country.isAcceptableOrUnknown(data['country']!, _countryMeta),
       );
     }
     if (data.containsKey('date')) {
@@ -3703,6 +3753,18 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.double,
         data['${effectivePrefix}total'],
       ),
+      city: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}city'],
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      ),
+      country: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country'],
+      ),
       date: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
@@ -3790,6 +3852,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final String userId;
   final String? merchant;
   final double? total;
+  final String? city;
+  final String? state;
+  final String? country;
   final DateTime? date;
   final String? categoryId;
   final String? transactionId;
@@ -3812,6 +3877,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     required this.userId,
     this.merchant,
     this.total,
+    this.city,
+    this.state,
+    this.country,
     this.date,
     this.categoryId,
     this.transactionId,
@@ -3840,6 +3908,15 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     }
     if (!nullToAbsent || total != null) {
       map['total'] = Variable<double>(total);
+    }
+    if (!nullToAbsent || city != null) {
+      map['city'] = Variable<String>(city);
+    }
+    if (!nullToAbsent || state != null) {
+      map['state'] = Variable<String>(state);
+    }
+    if (!nullToAbsent || country != null) {
+      map['country'] = Variable<String>(country);
     }
     if (!nullToAbsent || date != null) {
       map['date'] = Variable<DateTime>(date);
@@ -3891,6 +3968,13 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       total: total == null && nullToAbsent
           ? const Value.absent()
           : Value(total),
+      city: city == null && nullToAbsent ? const Value.absent() : Value(city),
+      state: state == null && nullToAbsent
+          ? const Value.absent()
+          : Value(state),
+      country: country == null && nullToAbsent
+          ? const Value.absent()
+          : Value(country),
       date: date == null && nullToAbsent ? const Value.absent() : Value(date),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
@@ -3935,6 +4019,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: serializer.fromJson<String>(json['userId']),
       merchant: serializer.fromJson<String?>(json['merchant']),
       total: serializer.fromJson<double?>(json['total']),
+      city: serializer.fromJson<String?>(json['city']),
+      state: serializer.fromJson<String?>(json['state']),
+      country: serializer.fromJson<String?>(json['country']),
       date: serializer.fromJson<DateTime?>(json['date']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
@@ -3964,6 +4051,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       'userId': serializer.toJson<String>(userId),
       'merchant': serializer.toJson<String?>(merchant),
       'total': serializer.toJson<double?>(total),
+      'city': serializer.toJson<String?>(city),
+      'state': serializer.toJson<String?>(state),
+      'country': serializer.toJson<String?>(country),
       'date': serializer.toJson<DateTime?>(date),
       'categoryId': serializer.toJson<String?>(categoryId),
       'transactionId': serializer.toJson<String?>(transactionId),
@@ -3991,6 +4081,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     String? userId,
     Value<String?> merchant = const Value.absent(),
     Value<double?> total = const Value.absent(),
+    Value<String?> city = const Value.absent(),
+    Value<String?> state = const Value.absent(),
+    Value<String?> country = const Value.absent(),
     Value<DateTime?> date = const Value.absent(),
     Value<String?> categoryId = const Value.absent(),
     Value<String?> transactionId = const Value.absent(),
@@ -4013,6 +4106,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     userId: userId ?? this.userId,
     merchant: merchant.present ? merchant.value : this.merchant,
     total: total.present ? total.value : this.total,
+    city: city.present ? city.value : this.city,
+    state: state.present ? state.value : this.state,
+    country: country.present ? country.value : this.country,
     date: date.present ? date.value : this.date,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     transactionId: transactionId.present
@@ -4039,6 +4135,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: data.userId.present ? data.userId.value : this.userId,
       merchant: data.merchant.present ? data.merchant.value : this.merchant,
       total: data.total.present ? data.total.value : this.total,
+      city: data.city.present ? data.city.value : this.city,
+      state: data.state.present ? data.state.value : this.state,
+      country: data.country.present ? data.country.value : this.country,
       date: data.date.present ? data.date.value : this.date,
       categoryId: data.categoryId.present
           ? data.categoryId.value
@@ -4084,6 +4183,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('country: $country, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
@@ -4111,6 +4213,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     userId,
     merchant,
     total,
+    city,
+    state,
+    country,
     date,
     categoryId,
     transactionId,
@@ -4137,6 +4242,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.userId == this.userId &&
           other.merchant == this.merchant &&
           other.total == this.total &&
+          other.city == this.city &&
+          other.state == this.state &&
+          other.country == this.country &&
           other.date == this.date &&
           other.categoryId == this.categoryId &&
           other.transactionId == this.transactionId &&
@@ -4161,6 +4269,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String> userId;
   final Value<String?> merchant;
   final Value<double?> total;
+  final Value<String?> city;
+  final Value<String?> state;
+  final Value<String?> country;
   final Value<DateTime?> date;
   final Value<String?> categoryId;
   final Value<String?> transactionId;
@@ -4184,6 +4295,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.userId = const Value.absent(),
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.city = const Value.absent(),
+    this.state = const Value.absent(),
+    this.country = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -4208,6 +4322,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     required String userId,
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.city = const Value.absent(),
+    this.state = const Value.absent(),
+    this.country = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -4232,6 +4349,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? userId,
     Expression<String>? merchant,
     Expression<double>? total,
+    Expression<String>? city,
+    Expression<String>? state,
+    Expression<String>? country,
     Expression<DateTime>? date,
     Expression<String>? categoryId,
     Expression<String>? transactionId,
@@ -4256,6 +4376,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (userId != null) 'user_id': userId,
       if (merchant != null) 'merchant': merchant,
       if (total != null) 'total': total,
+      if (city != null) 'city': city,
+      if (state != null) 'state': state,
+      if (country != null) 'country': country,
       if (date != null) 'date': date,
       if (categoryId != null) 'category_id': categoryId,
       if (transactionId != null) 'transaction_id': transactionId,
@@ -4282,6 +4405,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String>? userId,
     Value<String?>? merchant,
     Value<double?>? total,
+    Value<String?>? city,
+    Value<String?>? state,
+    Value<String?>? country,
     Value<DateTime?>? date,
     Value<String?>? categoryId,
     Value<String?>? transactionId,
@@ -4306,6 +4432,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       userId: userId ?? this.userId,
       merchant: merchant ?? this.merchant,
       total: total ?? this.total,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      country: country ?? this.country,
       date: date ?? this.date,
       categoryId: categoryId ?? this.categoryId,
       transactionId: transactionId ?? this.transactionId,
@@ -4341,6 +4470,15 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     }
     if (total.present) {
       map['total'] = Variable<double>(total.value);
+    }
+    if (city.present) {
+      map['city'] = Variable<String>(city.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (country.present) {
+      map['country'] = Variable<String>(country.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -4408,6 +4546,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('city: $city, ')
+          ..write('state: $state, ')
+          ..write('country: $country, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
@@ -6917,6 +7058,9 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       required String userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> city,
+      Value<String?> state,
+      Value<String?> country,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
@@ -6942,6 +7086,9 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> city,
+      Value<String?> state,
+      Value<String?> country,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
@@ -7027,6 +7174,21 @@ class $$ReceiptsTableFilterComposer
 
   ColumnFilters<double> get total => $composableBuilder(
     column: $table.total,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get country => $composableBuilder(
+    column: $table.country,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7182,6 +7344,21 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get city => $composableBuilder(
+    column: $table.city,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get date => $composableBuilder(
     column: $table.date,
     builder: (column) => ColumnOrderings(column),
@@ -7325,6 +7502,15 @@ class $$ReceiptsTableAnnotationComposer
   GeneratedColumn<double> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
 
+  GeneratedColumn<String> get city =>
+      $composableBuilder(column: $table.city, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get country =>
+      $composableBuilder(column: $table.country, builder: (column) => column);
+
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
@@ -7464,6 +7650,9 @@ class $$ReceiptsTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> city = const Value.absent(),
+                Value<String?> state = const Value.absent(),
+                Value<String?> country = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
@@ -7487,6 +7676,9 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                city: city,
+                state: state,
+                country: country,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,
@@ -7512,6 +7704,9 @@ class $$ReceiptsTableTableManager
                 required String userId,
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> city = const Value.absent(),
+                Value<String?> state = const Value.absent(),
+                Value<String?> country = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
@@ -7535,6 +7730,9 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                city: city,
+                state: state,
+                country: country,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,

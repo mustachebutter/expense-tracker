@@ -7,6 +7,7 @@ import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/receipt_scan_providers.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/widgets/forms/form_helpers.dart';
+import 'package:expense_tracker/widgets/forms/place_field.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_crop_editor.dart';
 import 'package:expense_tracker/widgets/receipts/receipt_image.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +43,10 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   late final TextEditingController _merchantController;
   late final TextEditingController _totalController;
   late final TextEditingController _shareController;
+  late final TextEditingController _cityController;
+  late final TextEditingController _stateController;
+  late final TextEditingController _countryController;
+  final FocusNode _merchantFocus = FocusNode();
   DateTime? _date;
   String? _categoryId;
   late bool _isFavorite;
@@ -70,6 +75,15 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _merchantController = TextEditingController(text: receipt.merchant ?? "");
     _totalController = TextEditingController(text: receipt.total == null ? "" : amountText(receipt.total!));
     _shareController = TextEditingController(text: receipt.splitAmount == null ? "" : amountText(receipt.splitAmount!));
+    _cityController = TextEditingController(text: receipt.city ?? "");
+    _stateController = TextEditingController(text: receipt.state ?? "");
+    _countryController = TextEditingController(text: receipt.country ?? "");
+
+    // Leaving the Shop field: if this shop has a location from before and this receipt has
+    // none yet, fill it in (visibly, so it can still be changed before saving)
+    _merchantFocus.addListener(() {
+      if (!_merchantFocus.hasFocus) _fillLocationFromSameShop();
+    });
     _date = receipt.date;
     _categoryId = receipt.categoryId;
     _isFavorite = receipt.isFavorite;
@@ -93,6 +107,10 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _merchantController.dispose();
     _totalController.dispose();
     _shareController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _countryController.dispose();
+    _merchantFocus.dispose();
     super.dispose();
   }
 
@@ -121,8 +139,37 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       }
       fill(_merchantController, scanned.merchant);
       fill(_totalController, scanned.total == null ? null : amountText(scanned.total!));
+      // A location the scan copied from the same shop, only if nothing has been typed here
+      if (_locationIsEmpty)
+      {
+        _cityController.text = scanned.city ?? "";
+        _stateController.text = scanned.state ?? "";
+        _countryController.text = scanned.country ?? "";
+      }
       if (replace || _date == null) _date = scanned.date ?? _date;
       _categoryId ??= scanned.categoryId;
+    });
+  }
+
+  bool get _locationIsEmpty =>
+    _cityController.text.trim().isEmpty && _stateController.text.trim().isEmpty && _countryController.text.trim().isEmpty;
+
+  Future<void> _fillLocationFromSameShop() async
+  {
+    final merchant = _merchantController.text.trim();
+    if (merchant.isEmpty || !_locationIsEmpty) return;
+
+    final previous = await ref.read(databaseProvider).receiptsDao.locationUsedBefore(
+      merchant,
+      _current.userId,
+      exceptId: _current.id,
+    );
+    if (previous == null || !mounted || !_locationIsEmpty) return;
+
+    setState(() {
+      _cityController.text = previous.city ?? "";
+      _stateController.text = previous.state ?? "";
+      _countryController.text = previous.country ?? "";
     });
   }
 
@@ -235,12 +282,16 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   {
     final actions = ref.read(receiptActionsProvider);
     final merchant = _merchantController.text.trim();
+    String? place(TextEditingController controller) => controller.text.trim().isEmpty ? null : controller.text.trim();
 
     // NOTE: Each step returns the receipt as saved, and the next step builds on that copy
     var saved = await actions.update(_current.copyWith(
       merchant: Value(merchant.isEmpty ? null : merchant),
       total: Value(double.tryParse(_totalController.text)),
       date: Value(_date),
+      city: Value(place(_cityController)),
+      state: Value(place(_stateController)),
+      country: Value(place(_countryController)),
       categoryId: Value(_categoryId),
       imageQuarterTurns: _quarterTurns,
       cropCorners: Value(_cropCorners),
@@ -271,6 +322,18 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
 
     await ref.read(receiptActionsProvider).delete(widget.receipt.id);
     if (mounted) Navigator.pop(context, true);
+  }
+
+  List<Widget> _locationFields()
+  {
+    final places = ref.watch(allReceiptPlacesProvider);
+
+    return [
+      const Text("Where", style: TextStyle(fontWeight: FontWeight.bold)),
+      PlaceField(label: "City", icon: Icons.location_city, controller: _cityController, suggestions: places.cities),
+      PlaceField(label: "State / region", icon: Icons.map_outlined, controller: _stateController, suggestions: places.states),
+      PlaceField(label: "Country", icon: Icons.public, controller: _countryController, suggestions: places.countries),
+    ];
   }
 
   List<Widget> _splitFields()
@@ -393,6 +456,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
 
         TextFormField(
           controller: _merchantController,
+          focusNode: _merchantFocus,
           decoration: const InputDecoration(labelText: "Shop", hintText: "Where was this?"),
           textCapitalization: TextCapitalization.words,
         ),
@@ -417,6 +481,8 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
           subtitle: const Text("Tap to pick the date on the receipt"),
           onTap: _pickDate,
         ),
+
+        ..._locationFields(),
 
         DropdownButtonFormField<String>(
           key: ValueKey(selectedCategoryId),

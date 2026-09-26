@@ -145,6 +145,10 @@ class Receipts extends Table
   // ReceiptImageStore), because a file path only means something on the device that saved it
   TextColumn get merchant => text().nullable()();
   RealColumn get total => real().nullable()();
+  // Where the receipt is from. Free text as the user typed it (filters ignore capitals)
+  TextColumn get city => text().nullable()();
+  TextColumn get state => text().nullable()();
+  TextColumn get country => text().nullable()();
   DateTimeColumn get date => dateTime().nullable()();
   TextColumn get categoryId => text().nullable().references(Categories, #id)();
   // Set once the receipt has been turned into a transaction, so it isn't added twice
@@ -218,8 +222,9 @@ class AppDatabase extends _$AppDatabase
 
   @override
   // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
-  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting, v7 cropping
-  int get schemaVersion => 7;
+  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting, v7 cropping,
+  // v8 the receipt's location
+  int get schemaVersion => 8;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -285,6 +290,12 @@ class AppDatabase extends _$AppDatabase
         if (from < 7)
         {
           await m.addColumn(receipts, receipts.cropCorners);
+        }
+        if (from < 8)
+        {
+          await m.addColumn(receipts, receipts.city);
+          await m.addColumn(receipts, receipts.state);
+          await m.addColumn(receipts, receipts.country);
         }
       }
     },

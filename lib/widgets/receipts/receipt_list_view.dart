@@ -20,6 +20,8 @@ class ReceiptListView extends ConsumerWidget
     final hasAnyReceipts = (ref.watch(receiptsProvider).value ?? []).isNotEmpty;
     final categories = ref.watch(activeCategoriesProvider).value ?? [];
     final categoriesById = {for (final category in categories) category.id: category};
+    final places = ref.watch(receiptPlacesProvider);
+    final filters = ref.read(receiptFilterProvider.notifier);
 
     return CustomScrollView(
       slivers: [
@@ -37,6 +39,28 @@ class ReceiptListView extends ConsumerWidget
                   ),
                   onChanged: ref.read(receiptFilterProvider.notifier).search,
                 ),
+                // Only once some receipt has a place, otherwise there's nothing to pick
+                if (places.countries.isNotEmpty || places.cities.isNotEmpty || filter.country != null)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _PlaceFilter(
+                        icon: Icons.public,
+                        allLabel: "All countries",
+                        selected: filter.country,
+                        options: places.countries,
+                        onSelected: filters.selectCountry,
+                      ),
+                      _PlaceFilter(
+                        icon: Icons.location_city,
+                        allLabel: filter.country == null ? "All cities" : "All cities in ${filter.country}",
+                        selected: filter.city,
+                        options: places.cities,
+                        onSelected: filters.selectCity,
+                      ),
+                    ],
+                  ),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -160,6 +184,21 @@ class ReceiptCard extends StatelessWidget
                     ].join(" · "),
                     style: textTheme.bodySmall,
                   ),
+                  if (receipt.city != null || receipt.country != null)
+                    Row(
+                      spacing: 4,
+                      children: [
+                        const Icon(Icons.place_outlined, size: 14, color: Colors.grey),
+                        Flexible(
+                          child: Text(
+                            [?receipt.city, ?receipt.country].join(", "),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
                   Row(
                     spacing: 4,
                     children: [
@@ -204,6 +243,48 @@ class _StatusBadge extends StatelessWidget
           Icon(failed ? Icons.error_outline : Icons.hourglass_top, size: 14, color: Colors.white),
           Text(failed ? "Couldn't read" : "Waiting to scan", style: const TextStyle(color: Colors.white, fontSize: 11)),
         ],
+      ),
+    );
+  }
+}
+
+// A chip that opens a menu of places ("All countries", "Australia", "Vietnam"...)
+class _PlaceFilter extends StatelessWidget
+{
+  final IconData icon;
+  final String allLabel;
+  final String? selected;
+  final List<String> options;
+  final ValueChanged<String?> onSelected;
+
+  const _PlaceFilter({
+    required this.icon,
+    required this.allLabel,
+    required this.selected,
+    required this.options,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // NOTE: PopupMenuButton hands back null when the menu is closed without a choice, so
+    // "all" is its own value instead of null
+    const String all = "\u0000all";
+
+    return PopupMenuButton<String>(
+      tooltip: allLabel,
+      initialValue: selected ?? all,
+      onSelected: (value) => onSelected(value == all ? null : value),
+      itemBuilder: (context) => [
+        PopupMenuItem(value: all, child: Text(allLabel)),
+        for (final option in options) PopupMenuItem(value: option, child: Text(option)),
+      ],
+      child: Chip(
+        avatar: Icon(icon, size: 18),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [Text(selected ?? allLabel), const Icon(Icons.arrow_drop_down, size: 20)],
+        ),
       ),
     );
   }

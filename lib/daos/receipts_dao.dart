@@ -94,6 +94,24 @@ class ReceiptsDao extends BaseDao<Receipts, Receipt> with _$ReceiptsDaoMixin
     return row?.read<String>("category_id");
   }
 
+  // The most recent receipt from this shop that has a location, to fill in a new one from the
+  // same shop. Null if the shop has never had a location
+  Future<Receipt?> locationUsedBefore(String merchant, String userId, {String? exceptId})
+  {
+    return (
+      select(receipts)
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.merchant.lower().equals(merchant.trim().toLowerCase()) &
+          (t.city.isNotNull() | t.state.isNotNull() | t.country.isNotNull()) &
+          (exceptId == null ? const Constant(true) : t.id.equals(exceptId).not())
+        )
+        ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+        ..limit(1)
+    ).getSingleOrNull();
+  }
+
   // NOTE: Only touches image_uploaded (plus the sync columns), so it can't undo an edit
   // the user made to other fields while the photo was uploading
   Future<int> setImageUploaded(String id, bool uploaded)

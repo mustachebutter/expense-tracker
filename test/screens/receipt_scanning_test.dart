@@ -344,4 +344,93 @@ void main()
       expect(decodeCorners(saved.cropCorners), rotateCornersClockwise(leftHalf));
     });
   });
+
+  group("location", () {
+    Future<Receipt> placed(String merchant, {String? city, String? country}) async
+    {
+      final receipt = await insertReceipt(db, merchant: merchant);
+      await db.receiptsDao.updateRow(receipt.copyWith(city: Value(city), country: Value(country)));
+      return receipt;
+    }
+
+    Future<void> open(WidgetTester tester) async
+    {
+      await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos,
+        receiptScanner: FakeReceiptScanner(isAvailable: false));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("cards show where the receipt is from", (tester) async {
+      await placed("Pho 24", city: "Hanoi", country: "Vietnam");
+      await open(tester);
+
+      expect(find.widgetWithText(ReceiptCard, "Hanoi, Vietnam"), findsOneWidget);
+    });
+
+    testWidgets("the place filters only appear once a receipt has a place", (tester) async {
+      await placed("No place");
+      await open(tester);
+
+      expect(find.text("All countries"), findsNothing);
+    });
+
+    testWidgets("picking a country, then a city, narrows the list", (tester) async {
+      await placed("Opera Bar", city: "Sydney", country: "Australia");
+      await placed("Pho 24", city: "Hanoi", country: "Vietnam");
+      await placed("Banh Mi", city: "Ho Chi Minh City", country: "Vietnam");
+      await open(tester);
+      expect(find.byType(ReceiptCard), findsNWidgets(3));
+
+      await tester.tap(find.text("All countries"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Vietnam").last);
+      await tester.pumpAndSettle();
+      expect(find.byType(ReceiptCard), findsNWidgets(2));
+
+      // The city menu only lists cities in Vietnam
+      await tester.tap(find.text("All cities in Vietnam"));
+      await tester.pumpAndSettle();
+      expect(find.text("Sydney"), findsNothing);
+      await tester.tap(find.text("Hanoi").last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReceiptCard), findsOneWidget);
+      expect(find.widgetWithText(ReceiptCard, "Pho 24"), findsOneWidget);
+    });
+
+    testWidgets("the place is typed in the receipt dialog, with suggestions from earlier receipts", (tester) async {
+      await placed("Pho 24", city: "Hanoi", country: "Vietnam");
+      await insertReceipt(db, merchant: "New one");
+      await open(tester);
+
+      await tester.tap(find.widgetWithText(ReceiptCard, "New one"));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, "City"), "Han");
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, "Hanoi"));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, "Country"), "Vietnam");
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+
+      final saved = (await db.receiptsDao.getAll()).firstWhere((r) => r.merchant == "New one");
+      expect((saved.city, saved.state, saved.country), ("Hanoi", null, "Vietnam"));
+    });
+
+    testWidgets("typing a shop you've been to before fills in its place", (tester) async {
+      await placed("Pho 24", city: "Hanoi", country: "Vietnam");
+      await insertReceipt(db, merchant: "Untitled");
+      await open(tester);
+
+      await tester.tap(find.widgetWithText(ReceiptCard, "Untitled"));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, "Shop"), "pho 24");
+      // Moving on to the next field is what triggers it
+      await tester.tap(find.widgetWithText(TextFormField, "Total"));
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester, "City"), "Hanoi");
+      expect(fieldText(tester, "Country"), "Vietnam");
+    });
+  });
 }

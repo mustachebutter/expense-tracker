@@ -37,17 +37,19 @@ class PlaceFinder
   // exists on Android and iOS
   bool get isAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  // Throws PlaceNotFound, and only PlaceNotFound, when it can't: whatever goes wrong (even
+  // the location plugin missing from an old build), the form can say so instead of crashing
   Future<FoundPlace> findCurrentPlace() async
   {
-    if (!await Geolocator.isLocationServiceEnabled()) throw const PlaceNotFound(PlaceProblem.locationOff);
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) throw const PlaceNotFound(PlaceProblem.permissionDenied);
-    if (permission == LocationPermission.deniedForever) throw const PlaceNotFound(PlaceProblem.permissionBlocked);
-
     try
     {
+      if (!await Geolocator.isLocationServiceEnabled()) throw const PlaceNotFound(PlaceProblem.locationOff);
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) throw const PlaceNotFound(PlaceProblem.permissionDenied);
+      if (permission == LocationPermission.deniedForever) throw const PlaceNotFound(PlaceProblem.permissionBlocked);
+
       // NOTE: Low accuracy is enough for a city, and it's faster and easier on the battery
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 15)),

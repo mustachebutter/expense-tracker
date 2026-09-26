@@ -60,6 +60,7 @@ Future<void> pumpApp(
   FakeReceiptCropper? receiptCropper,
   // No GPS by default, like Windows
   FakePlaceFinder? placeFinder,
+  FakeReceiptPhotoShrinker? photoShrinker,
   // By default there's no scanner, like Windows. Pass a FakeReceiptScanner to act like a phone
   ReceiptScanner? receiptScanner,
   Map<String, Object> preferences = const {},
@@ -90,7 +91,7 @@ Future<void> pumpApp(
         receiptImagePickerProvider.overrideWithValue(receiptPicker ?? FakeReceiptImagePicker()),
         receiptCropperProvider.overrideWithValue(receiptCropper ?? FakeReceiptCropper()),
         placeFinderProvider.overrideWithValue(placeFinder ?? FakePlaceFinder(isAvailable: false)),
-        receiptPhotoShrinkerProvider.overrideWithValue(FakeReceiptPhotoShrinker()),
+        receiptPhotoShrinkerProvider.overrideWithValue(photoShrinker ?? FakeReceiptPhotoShrinker()),
         receiptScannerProvider.overrideWithValue(receiptScanner ?? FakeReceiptScanner(isAvailable: false)),
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         // Tests read dates day first, whatever the machine running them is set to

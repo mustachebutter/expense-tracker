@@ -510,4 +510,57 @@ void main()
     expect(tester.widget<Text>(find.byKey(Key("sticker_place_${countryOnly.id}"))).data, "Japan");
     expect(find.byKey(Key("sticker_place_${nowhere.id}")), findsNothing);
   });
+
+  group("suburb and photo places", () {
+    Future<void> openReceipt(WidgetTester tester, String merchant, {FakePlaceFinder? finder}) async
+    {
+      await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos,
+        receiptScanner: FakeReceiptScanner(isAvailable: false), placeFinder: finder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ReceiptCard, merchant));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("Use my location fills the suburb too", (tester) async {
+      await insertReceipt(db, merchant: "Timmies");
+      await openReceipt(tester, "Timmies",
+        finder: FakePlaceFinder(place: (suburb: "Etobicoke", city: "Toronto", state: "Ontario", country: "Canada")));
+
+      await tester.tap(find.text("Use my location"));
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester, "Suburb / area"), "Etobicoke");
+      expect(fieldText(tester, "City"), "Toronto");
+    });
+
+    testWidgets("a photo place waiting for the phone says so, and typing a place drops the coordinates", (tester) async {
+      final receipt = await insertReceipt(db, merchant: "Imported");
+      await db.receiptsDao.updateRow(receipt.copyWith(pendingLatitude: const Value(43.62), pendingLongitude: const Value(-79.51)));
+      await openReceipt(tester, "Imported");
+
+      expect(find.byKey(const Key("place_waiting")), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextFormField, "City"), "Toronto");
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("place_waiting")), findsNothing, reason: "a typed place replaces it");
+      await tester.tap(find.widgetWithText(ElevatedButton, "Save"));
+      await tester.pumpAndSettle();
+
+      final saved = (await db.receiptsDao.getAll()).single;
+      expect((saved.city, saved.pendingLatitude, saved.pendingLongitude), ("Toronto", null, null));
+    });
+
+    testWidgets("cards and stickers show the suburb", (tester) async {
+      final receipt = await insertReceipt(db, merchant: "Timmies", isFavorite: true, boardX: 40, boardY: 40);
+      await db.receiptsDao.updateRow(receipt.copyWith(suburb: const Value("Etobicoke"), city: const Value("Toronto"), country: const Value("Canada")));
+      await pumpApp(tester, const ReceiptsScreen(), db: db, receiptImages: photos, receiptScanner: FakeReceiptScanner(isAvailable: false));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ReceiptCard, "Etobicoke, Toronto, Canada"), findsOneWidget);
+
+      await tester.tap(find.text("Board"));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Text>(find.byKey(Key("sticker_place_${receipt.id}"))).data, "Etobicoke");
+    });
+  });
 }

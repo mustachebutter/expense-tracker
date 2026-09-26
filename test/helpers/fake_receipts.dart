@@ -176,8 +176,24 @@ class FakePlaceFinder implements PlaceFinder
   FoundPlace place;
   PlaceProblem? problem;
   var settingsOpened = 0;
+  // Coordinates it was asked to name (from photos), and what it answers for them
+  final List<(double, double)> namedCoordinates = [];
+  FoundPlace coordinatesPlace = (suburb: "Etobicoke", city: "Toronto", state: "Ontario", country: "Canada");
+  PlaceProblem? coordinatesProblem;
 
-  FakePlaceFinder({this.isAvailable = true, this.place = (city: "Hanoi", state: "Hà Nội", country: "Vietnam"), this.problem});
+  FakePlaceFinder({
+    this.isAvailable = true,
+    this.place = (suburb: null, city: "Hanoi", state: "Hà Nội", country: "Vietnam"),
+    this.problem,
+  });
+
+  @override
+  Future<FoundPlace> nameCoordinates(double latitude, double longitude) async
+  {
+    namedCoordinates.add((latitude, longitude));
+    if (coordinatesProblem != null) throw PlaceNotFound(coordinatesProblem!);
+    return coordinatesPlace;
+  }
 
   @override
   Future<FoundPlace> findCurrentPlace() async
@@ -190,15 +206,18 @@ class FakePlaceFinder implements PlaceFinder
   Future<void> openSettings() async => settingsOpened++;
 }
 
-// Hands photos straight back, and remembers what it was given
+// Hands photos straight back, as if their EXIF said [details]
 class FakeReceiptPhotoShrinker implements ReceiptPhotoShrinker
 {
-  final List<Uint8List> shrunk = [];
+  PhotoDetails details;
+  final List<Uint8List> prepared = [];
+
+  FakeReceiptPhotoShrinker({this.details = noPhotoDetails});
 
   @override
-  Future<Uint8List> shrink(Uint8List photo) async
+  Future<PreparedPhoto> prepare(Uint8List photo) async
   {
-    shrunk.add(photo);
-    return photo;
+    prepared.add(photo);
+    return (bytes: photo, details: details);
   }
 }

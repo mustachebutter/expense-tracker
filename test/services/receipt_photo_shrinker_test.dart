@@ -78,8 +78,76 @@ void main()
   test("the background version gives the same result", () async {
     final photo = img.encodePng(img.Image(width: 4000, height: 3000));
 
-    final shrunk = await ReceiptPhotoShrinker().shrink(photo);
+    final prepared = await ReceiptPhotoShrinker().prepare(photo);
 
-    expect(img.decodeImage(shrunk)!.width, 2000);
+    expect(img.decodeImage(prepared.bytes)!.width, 2000);
+  });
+
+  group("readPhotoDetails", () {
+    // A JPEG with EXIF written the way a phone camera writes it: GPS as degrees, minutes and
+    // seconds (each a fraction), plus N/S and E/W, and the date it was taken
+    Uint8List photoWithExif({required String taken, required List<List<int>> latitude, required String latitudeRef,
+      required List<List<int>> longitude, required String longitudeRef})
+    {
+      final photo = img.Image(width: 400, height: 300);
+      photo.exif.exifIfd[0x9003] = img.IfdValueAscii(taken);
+      final gps = photo.exif.gpsIfd;
+      gps[0x0001] = img.IfdValueAscii(latitudeRef);
+      gps[0x0002] = img.IfdValueRational.list([for (final part in latitude) img.IfdValueRational(part[0], part[1]).toRational()]);
+      gps[0x0003] = img.IfdValueAscii(longitudeRef);
+      gps[0x0004] = img.IfdValueRational.list([for (final part in longitude) img.IfdValueRational(part[0], part[1]).toRational()]);
+      return img.encodeJpg(photo);
+    }
+
+    test("reads where and when a photo was taken, down to the suburb", () {
+      // Etobicoke, Toronto: 43° 37' 13.8" N, 79° 30' 47.5" W
+      final photo = photoWithExif(
+        taken: "2026:09:12 14:32:05",
+        latitude: [[43, 1], [37, 1], [138, 10]], latitudeRef: "N",
+        longitude: [[79, 1], [30, 1], [475, 10]], longitudeRef: "W",
+      );
+
+      final details = readPhotoDetails(photo);
+
+      expect(details.takenAt, DateTime(2026, 9, 12, 14, 32, 5));
+      // NOTE: image's own gpsLatitude would say 43.0 here, ~70 km out. Minutes and seconds matter
+      expect(details.latitude, closeTo(43.6205, 0.0001));
+      expect(details.longitude, closeTo(-79.5132, 0.0001), reason: "west is negative");
+    });
+
+    test("south of the equator is negative too", () {
+      final photo = photoWithExif(
+        taken: "2026:01:02 03:04:05",
+        latitude: [[33, 1], [52, 1], [0, 1]], latitudeRef: "S",
+        longitude: [[151, 1], [12, 1], [0, 1]], longitudeRef: "E",
+      );
+
+      final details = readPhotoDetails(photo);
+
+      expect(details.latitude, closeTo(-33.8667, 0.0001));
+      expect(details.longitude, closeTo(151.2, 0.0001));
+    });
+
+    test("a photo without EXIF, or a camera with an unset clock, gives nothing", () {
+      expect(readPhotoDetails(img.encodeJpg(img.Image(width: 10, height: 10))), noPhotoDetails);
+      expect(readPhotoDetails(Uint8List.fromList([1, 2, 3])), noPhotoDetails);
+
+      final unsetClock = photoWithExif(
+        taken: "0000:00:00 00:00:00",
+        latitude: [[0, 1], [0, 1], [0, 1]], latitudeRef: "N",
+        longitude: [[0, 1], [0, 1], [0, 1]], longitudeRef: "E",
+      );
+      expect(readPhotoDetails(unsetClock), noPhotoDetails, reason: "0,0 is a camera without a GPS fix, not the sea off Africa");
+    });
+
+    test("prepare reads the details before shrinking removes them", () async {
+      final photo = img.Image(width: 4000, height: 3000);
+      photo.exif.exifIfd[0x9003] = img.IfdValueAscii("2026:09:12 14:32:05");
+
+      final prepared = await ReceiptPhotoShrinker().prepare(img.encodeJpg(photo));
+
+      expect(prepared.details.takenAt, DateTime(2026, 9, 12, 14, 32, 5));
+      expect(img.decodeImage(prepared.bytes)!.width, 2000);
+    });
   });
 }

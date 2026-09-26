@@ -9,6 +9,7 @@ import 'package:expense_tracker/providers/transaction_providers.dart';
 import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
 import 'package:expense_tracker/services/receipt_photo_shrinker.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -51,25 +52,28 @@ final receiptsProvider = StreamProvider<List<Receipt>>((ref) {
 // What the receipts list is showing: one category (null = all) and a search on the shop name
 // What the receipts list is showing: one category (null = all), a search on the shop name,
 // and a place: a country, and a city in it (null = anywhere)
-typedef ReceiptFilter = ({String? categoryId, String search, String? country, String? city});
+typedef ReceiptFilter = ({String? categoryId, String search, String? country, String? city, String? suburb});
 
 class ReceiptFilterNotifier extends Notifier<ReceiptFilter>
 {
   @override
-  ReceiptFilter build() => (categoryId: null, search: "", country: null, city: null);
+  ReceiptFilter build() => (categoryId: null, search: "", country: null, city: null, suburb: null);
 
   void selectCategory(String? categoryId) =>
-    state = (categoryId: categoryId, search: state.search, country: state.country, city: state.city);
+    state = (categoryId: categoryId, search: state.search, country: state.country, city: state.city, suburb: state.suburb);
 
   void search(String text) =>
-    state = (categoryId: state.categoryId, search: text, country: state.country, city: state.city);
+    state = (categoryId: state.categoryId, search: text, country: state.country, city: state.city, suburb: state.suburb);
 
-  // NOTE: Picking a country clears the city, which may be in another country
+  // NOTE: Picking a country clears the city and suburb, which may be somewhere else
   void selectCountry(String? country) =>
-    state = (categoryId: state.categoryId, search: state.search, country: country, city: null);
+    state = (categoryId: state.categoryId, search: state.search, country: country, city: null, suburb: null);
 
   void selectCity(String? city) =>
-    state = (categoryId: state.categoryId, search: state.search, country: state.country, city: city);
+    state = (categoryId: state.categoryId, search: state.search, country: state.country, city: city, suburb: null);
+
+  void selectSuburb(String? suburb) =>
+    state = (categoryId: state.categoryId, search: state.search, country: state.country, city: state.city, suburb: suburb);
 }
 
 final receiptFilterProvider = NotifierProvider<ReceiptFilterNotifier, ReceiptFilter>(ReceiptFilterNotifier.new);
@@ -92,6 +96,7 @@ final filteredReceiptsProvider = Provider<AsyncValue<List<Receipt>>>((ref) {
     if (search.isNotEmpty && !(receipt.merchant ?? "").toLowerCase().contains(search)) return false;
     if (filter.country != null && !samePlace(receipt.country, filter.country)) return false;
     if (filter.city != null && !samePlace(receipt.city, filter.city)) return false;
+    if (filter.suburb != null && !samePlace(receipt.suburb, filter.suburb)) return false;
     return true;
   }).toList());
 });
@@ -109,19 +114,21 @@ List<String> _distinctPlaces(Iterable<String?> values)
   return byKey.values.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 }
 
-typedef ReceiptPlaces = ({List<String> countries, List<String> states, List<String> cities});
+typedef ReceiptPlaces = ({List<String> countries, List<String> states, List<String> cities, List<String> suburbs});
 
-// The places the user has used, for the filter menus and the suggestions while typing.
-// Cities follow the filter's country when one is picked
+// The places the user has used, for the filter menus. Cities follow the filter's country and
+// suburbs its city, when those are picked
 final receiptPlacesProvider = Provider<ReceiptPlaces>((ref) {
   final receipts = ref.watch(receiptsProvider).value ?? [];
-  final country = ref.watch(receiptFilterProvider.select((filter) => filter.country));
-  final inCountry = country == null ? receipts : receipts.where((r) => samePlace(r.country, country));
+  final filter = ref.watch(receiptFilterProvider);
+  final inCountry = filter.country == null ? receipts : receipts.where((r) => samePlace(r.country, filter.country));
+  final inCity = filter.city == null ? inCountry : inCountry.where((r) => samePlace(r.city, filter.city));
 
   return (
     countries: _distinctPlaces(receipts.map((r) => r.country)),
     states: _distinctPlaces(receipts.map((r) => r.state)),
     cities: _distinctPlaces(inCountry.map((r) => r.city)),
+    suburbs: _distinctPlaces(inCity.map((r) => r.suburb)),
   );
 });
 
@@ -132,6 +139,7 @@ final allReceiptPlacesProvider = Provider<ReceiptPlaces>((ref) {
     countries: _distinctPlaces(receipts.map((r) => r.country)),
     states: _distinctPlaces(receipts.map((r) => r.state)),
     cities: _distinctPlaces(receipts.map((r) => r.city)),
+    suburbs: _distinctPlaces(receipts.map((r) => r.suburb)),
   );
 });
 
@@ -162,14 +170,22 @@ class ReceiptActions
     final userId = _ref.requireUserId();
     final id = const Uuid().v4();
 
-    await _images.save(id, await _ref.read(receiptPhotoShrinkerProvider).shrink(imageBytes));
+    final photo = await _ref.read(receiptPhotoShrinkerProvider).prepare(imageBytes);
+    await _images.save(id, photo.bytes);
     try
     {
       // NOTE: Every new receipt waits for the scanner. On a phone that's a second away, on
       // Windows it waits for the phone to sync and read it
-      return await _db.into(_db.receipts).insertReturning(
-        ReceiptsCompanion.insert(id: Value(id), userId: userId, scanStatus: const Value(ReceiptScanStatus.waiting)),
+      final receipt = await _db.into(_db.receipts).insertReturning(
+        ReceiptsCompanion.insert(
+          id: Value(id),
+          userId: userId,
+          scanStatus: const Value(ReceiptScanStatus.waiting),
+          // When the photo was taken, until a date read off the receipt (or typed) replaces it
+          date: Value(photo.details.takenAt),
+        ),
       );
+      return await _placeFromPhoto(receipt, photo.details);
     }
     catch (e)
     {
@@ -180,6 +196,17 @@ class ReceiptActions
   }
 
   // Returns the row as saved, so several changes in a row can build on each other
+  // A photo taken with GPS on says where the receipt is from. On a phone, name the place now.
+  // Where that isn't possible (Windows, or no internet right now), keep the coordinates for
+  // the phone to name on its next sync. See ReceiptPlaceNamer
+  Future<Receipt> _placeFromPhoto(Receipt receipt, PhotoDetails details)
+  {
+    final latitude = details.latitude, longitude = details.longitude;
+    if (latitude == null || longitude == null) return Future.value(receipt);
+
+    return _ref.read(receiptPlaceNamerProvider).nameOrKeep(receipt, latitude, longitude);
+  }
+
   Future<Receipt> update(Receipt edited) async
   {
     if (edited.userId != _ref.requireUserId()) throw StateError("Can't edit another user's receipt");
@@ -254,3 +281,79 @@ class ReceiptActions
 }
 
 final receiptActionsProvider = Provider<ReceiptActions>((ref) => ReceiptActions(ref));
+
+// Turns photo coordinates into a place name on the receipt
+class ReceiptPlaceNamer
+{
+  final Ref _ref;
+
+  ReceiptPlaceNamer(this._ref);
+
+  bool _hasPlace(Receipt r) => r.suburb != null || r.city != null || r.state != null || r.country != null;
+
+  // Names the place if this device can, otherwise saves the coordinates to be named later
+  Future<Receipt> nameOrKeep(Receipt receipt, double latitude, double longitude) async
+  {
+    final finder = _ref.read(placeFinderProvider);
+    if (finder.isAvailable)
+    {
+      try
+      {
+        return await _applyPlace(receipt, await finder.nameCoordinates(latitude, longitude));
+      }
+      on PlaceNotFound catch (e)
+      {
+        debugPrint("📍 Couldn't name the photo's place yet, keeping it for later: $e");
+      }
+    }
+    return _ref.read(receiptActionsProvider).update(receipt.copyWith(
+      pendingLatitude: Value(latitude),
+      pendingLongitude: Value(longitude),
+    ));
+  }
+
+  // Fills the place in (unless one was typed meanwhile) and forgets the coordinates
+  Future<Receipt> _applyPlace(Receipt receipt, FoundPlace place)
+  {
+    final keepTyped = _hasPlace(receipt);
+    return _ref.read(receiptActionsProvider).update(receipt.copyWith(
+      suburb: Value(keepTyped ? receipt.suburb : place.suburb),
+      city: Value(keepTyped ? receipt.city : place.city),
+      state: Value(keepTyped ? receipt.state : place.state),
+      country: Value(keepTyped ? receipt.country : place.country),
+      pendingLatitude: const Value(null),
+      pendingLongitude: const Value(null),
+    ));
+  }
+
+  // On a phone: names every receipt whose photo coordinates are waiting (e.g. imported on
+  // Windows). Ones it can't name yet (no internet) stay waiting for the next sync
+  Future<int> nameWaiting() async
+  {
+    if (!_ref.read(placeFinderProvider).isAvailable) return 0;
+
+    final userId = _ref.requireUserId();
+    final dao = _ref.read(databaseProvider).receiptsDao;
+    var named = 0;
+
+    for (final receipt in await dao.getWaitingForPlaceName(userId))
+    {
+      try
+      {
+        final place = await _ref.read(placeFinderProvider).nameCoordinates(receipt.pendingLatitude!, receipt.pendingLongitude!);
+        // NOTE: Start from the receipt as it is now, the user may have typed a place meanwhile
+        final latest = await dao.getReceiptById(receipt.id, userId);
+        if (latest == null) continue;
+        await _applyPlace(latest, place);
+        named++;
+      }
+      on PlaceNotFound catch (e)
+      {
+        debugPrint("📍 Still can't name ${receipt.id}: $e");
+      }
+    }
+    return named;
+  }
+}
+
+final receiptPlaceNamerProvider = Provider<ReceiptPlaceNamer>((ref) => ReceiptPlaceNamer(ref));

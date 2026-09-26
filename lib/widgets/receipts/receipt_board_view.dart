@@ -174,8 +174,9 @@ class _BoardCard extends StatelessWidget
       receipt.merchant ?? "Untitled",
       if (receipt.total != null) "\$${receipt.total!.toStringAsFixed(2)}",
     ].join(" · ");
-    // NOTE: The city is what's useful at a glance, the country when there's no city
-    final String? place = receipt.city ?? receipt.country;
+    // NOTE: The most specific place is what's useful at a glance: the suburb (Etobicoke), else
+    // the city, else the country
+    final String? place = receipt.suburb ?? receipt.city ?? receipt.country;
 
     return Positioned(
       left: position.dx,

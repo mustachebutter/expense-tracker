@@ -59,6 +59,15 @@ class ReceiptListView extends ConsumerWidget
                         options: places.cities,
                         onSelected: filters.selectCity,
                       ),
+                      // Only when there are suburbs to pick from (in the chosen city, if one is)
+                      if (places.suburbs.isNotEmpty || filter.suburb != null)
+                        _PlaceFilter(
+                          icon: Icons.holiday_village_outlined,
+                          allLabel: filter.city == null ? "All areas" : "All of ${filter.city}",
+                          selected: filter.suburb,
+                          options: places.suburbs,
+                          onSelected: filters.selectSuburb,
+                        ),
                     ],
                   ),
                 Wrap(
@@ -184,14 +193,14 @@ class ReceiptCard extends StatelessWidget
                     ].join(" · "),
                     style: textTheme.bodySmall,
                   ),
-                  if (receipt.city != null || receipt.country != null)
+                  if (receipt.suburb != null || receipt.city != null || receipt.country != null)
                     Row(
                       spacing: 4,
                       children: [
                         const Icon(Icons.place_outlined, size: 14, color: Colors.grey),
                         Flexible(
                           child: Text(
-                            [?receipt.city, ?receipt.country].join(", "),
+                            [?receipt.suburb, ?receipt.city, ?receipt.country].join(", "),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: textTheme.bodySmall,

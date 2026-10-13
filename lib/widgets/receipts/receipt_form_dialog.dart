@@ -44,6 +44,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
   late final TextEditingController _merchantController;
   late final TextEditingController _totalController;
   late final TextEditingController _shareController;
+  late final TextEditingController _suburbController;
   late final TextEditingController _cityController;
   late final TextEditingController _stateController;
   late final TextEditingController _countryController;
@@ -79,6 +80,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _merchantController = TextEditingController(text: receipt.merchant ?? "");
     _totalController = TextEditingController(text: receipt.total == null ? "" : amountText(receipt.total!));
     _shareController = TextEditingController(text: receipt.splitAmount == null ? "" : amountText(receipt.splitAmount!));
+    _suburbController = TextEditingController(text: receipt.suburb ?? "");
     _cityController = TextEditingController(text: receipt.city ?? "");
     _stateController = TextEditingController(text: receipt.state ?? "");
     _countryController = TextEditingController(text: receipt.country ?? "");
@@ -111,6 +113,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     _merchantController.dispose();
     _totalController.dispose();
     _shareController.dispose();
+    _suburbController.dispose();
     _cityController.dispose();
     _stateController.dispose();
     _countryController.dispose();
@@ -146,17 +149,25 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       // A location the scan copied from the same shop, only if nothing has been typed here
       if (_locationIsEmpty)
       {
-        _cityController.text = scanned.city ?? "";
-        _stateController.text = scanned.state ?? "";
-        _countryController.text = scanned.country ?? "";
+        _setPlace(suburb: scanned.suburb, city: scanned.city, state: scanned.state, country: scanned.country);
       }
       if (replace || _date == null) _date = scanned.date ?? _date;
       _categoryId ??= scanned.categoryId;
     });
   }
 
-  bool get _locationIsEmpty =>
-    _cityController.text.trim().isEmpty && _stateController.text.trim().isEmpty && _countryController.text.trim().isEmpty;
+  List<TextEditingController> get _placeControllers => [_suburbController, _cityController, _stateController, _countryController];
+
+  bool get _locationIsEmpty => _placeControllers.every((controller) => controller.text.trim().isEmpty);
+
+  // The four place fields, in the same order as _placeControllers
+  void _setPlace({String? suburb, String? city, String? state, String? country})
+  {
+    _suburbController.text = suburb ?? "";
+    _cityController.text = city ?? "";
+    _stateController.text = state ?? "";
+    _countryController.text = country ?? "";
+  }
 
   Future<void> _fillLocationFromSameShop() async
   {
@@ -170,11 +181,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     );
     if (previous == null || !mounted || !_locationIsEmpty) return;
 
-    setState(() {
-      _cityController.text = previous.city ?? "";
-      _stateController.text = previous.state ?? "";
-      _countryController.text = previous.country ?? "";
-    });
+    setState(() => _setPlace(suburb: previous.suburb, city: previous.city, state: previous.state, country: previous.country));
   }
 
   // What the user pays with the split as it's set in the form right now
@@ -293,9 +300,14 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
       merchant: Value(merchant.isEmpty ? null : merchant),
       total: Value(double.tryParse(_totalController.text)),
       date: Value(_date),
+      suburb: Value(place(_suburbController)),
       city: Value(place(_cityController)),
       state: Value(place(_stateController)),
       country: Value(place(_countryController)),
+      // NOTE: A place the user typed (or filled with "Use my location") means the photo's
+      // coordinates aren't needed any more, so they're not kept
+      pendingLatitude: Value(_locationIsEmpty ? _current.pendingLatitude : null),
+      pendingLongitude: Value(_locationIsEmpty ? _current.pendingLongitude : null),
       categoryId: Value(_categoryId),
       imageQuarterTurns: _quarterTurns,
       cropCorners: Value(_cropCorners),
@@ -342,11 +354,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
     {
       final place = await finder.findCurrentPlace();
       if (!mounted) return;
-      setState(() {
-        _cityController.text = place.city ?? "";
-        _stateController.text = place.state ?? "";
-        _countryController.text = place.country ?? "";
-      });
+      setState(() => _setPlace(suburb: place.suburb, city: place.city, state: place.state, country: place.country));
     }
     on PlaceNotFound catch (e)
     {
@@ -379,6 +387,21 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
             ),
         ],
       ),
+      if (_current.pendingLatitude != null)
+        // NOTE: Rebuilds as the place fields change, so it goes away as soon as a place is typed
+        ListenableBuilder(
+          listenable: Listenable.merge(_placeControllers),
+          builder: (context, _) => !_locationIsEmpty ? const SizedBox.shrink() : const Row(
+            key: Key("place_waiting"),
+            spacing: 8,
+            children: [
+              Icon(Icons.phone_android, size: 18),
+              Expanded(
+                child: Text("The photo says where it was taken. Your phone will fill in the place on its next sync."),
+              ),
+            ],
+          ),
+        ),
       if (_locationProblem != null)
         Row(
           key: const Key("location_problem"),
@@ -399,6 +422,7 @@ class _ReceiptFormDialogState extends ConsumerState<ReceiptFormDialog>
               TextButton(onPressed: ref.read(placeFinderProvider).openSettings, child: const Text("Settings")),
           ],
         ),
+      PlaceField(label: "Suburb / area", icon: Icons.holiday_village_outlined, controller: _suburbController, suggestions: places.suburbs),
       PlaceField(label: "City", icon: Icons.location_city, controller: _cityController, suggestions: places.cities),
       PlaceField(label: "State / region", icon: Icons.map_outlined, controller: _stateController, suggestions: places.states),
       PlaceField(label: "Country", icon: Icons.public, controller: _countryController, suggestions: places.countries),

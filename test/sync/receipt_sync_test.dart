@@ -75,9 +75,12 @@ void main()
       imageQuarterTurns: 3,
       splitPeople: const Value(4),
       cropCorners: const Value("0.1000,0.1000,0.9000,0.1000,0.9000,0.9000,0.1000,0.9000"),
+      suburb: const Value("Hoàn Kiếm"),
       city: const Value("Hanoi"),
       state: const Value("Hà Nội"),
       country: const Value("Vietnam"),
+      pendingLatitude: const Value(21.03),
+      pendingLongitude: const Value(105.85),
     ));
     final customSplit = await insertReceipt(pcDb, total: 20);
     await pcDb.receiptsDao.updateRow(customSplit.copyWith(splitAmount: const Value(7.5)));
@@ -94,7 +97,8 @@ void main()
     expect(fullOnPhone.scanStatus, ReceiptScanStatus.scanned);
     expect((fullOnPhone.imageQuarterTurns, fullOnPhone.splitPeople, fullOnPhone.splitAmount), (3, 4, null));
     expect(fullOnPhone.cropCorners, "0.1000,0.1000,0.9000,0.1000,0.9000,0.9000,0.1000,0.9000");
-    expect((fullOnPhone.city, fullOnPhone.state, fullOnPhone.country), ("Hanoi", "Hà Nội", "Vietnam"));
+    expect((fullOnPhone.suburb, fullOnPhone.city, fullOnPhone.state, fullOnPhone.country), ("Hoàn Kiếm", "Hanoi", "Hà Nội", "Vietnam"));
+    expect((fullOnPhone.pendingLatitude, fullOnPhone.pendingLongitude), (21.03, 105.85), reason: "so the phone can name it");
     expect((await getReceipt(phoneDb, customSplit.id)).splitAmount, 7.5);
     expect(fullOnPhone.createdAt, full.createdAt);
 

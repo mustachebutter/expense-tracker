@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart' show TableInfo, Variable;
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/receipt_scan_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -128,6 +129,19 @@ class SyncController extends Notifier<SyncState>
     }
   }
 
+  // Names places from photo coordinates, if this device can (a phone). Never fails the sync
+  Future<void> _nameWaitingPlaces() async
+  {
+    try
+    {
+      await ref.read(receiptPlaceNamerProvider).nameWaiting();
+    }
+    catch (e)
+    {
+      print("❌ Naming waiting places failed: $e");
+    }
+  }
+
   Future<void> _run() async
   {
     final userId = ref.read(currentUserIdProvider);
@@ -153,6 +167,7 @@ class SyncController extends Notifier<SyncState>
 
       // Photos imported on another device (e.g. Windows) may have just arrived
       await _scanWaitingReceipts();
+      await _nameWaitingPlaces();
     }
     catch (e)
     {

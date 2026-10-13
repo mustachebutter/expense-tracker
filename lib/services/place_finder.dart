@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
-typedef FoundPlace = ({String? city, String? state, String? country});
+typedef FoundPlace = ({String? suburb, String? city, String? state, String? country});
 
 // Turns a position into place names. A parameter so tests can fake it
 typedef PlaceLookup = Future<List<Placemark>> Function(double latitude, double longitude);
@@ -58,7 +58,7 @@ class PlaceFinder
     try
     {
       final position = await _findPosition();
-      return await _nameOf(position);
+      return await _nameOf(position.latitude, position.longitude);
     }
     on PlaceNotFound catch (e)
     {
@@ -106,12 +106,31 @@ class PlaceFinder
     }
   }
 
-  Future<FoundPlace> _nameOf(Position position) async
+  // The place at some coordinates, e.g. where a photo was taken (from its EXIF data).
+  // Throws PlaceNotFound(noPlaceName) when the phone can't name it (often: no internet)
+  Future<FoundPlace> nameCoordinates(double latitude, double longitude) async
+  {
+    try
+    {
+      return await _nameOf(latitude, longitude);
+    }
+    on PlaceNotFound catch (e)
+    {
+      debugPrint("📍 $e");
+      rethrow;
+    }
+    catch (e)
+    {
+      throw PlaceNotFound(PlaceProblem.unavailable, e);
+    }
+  }
+
+  Future<FoundPlace> _nameOf(double latitude, double longitude) async
   {
     final List<Placemark> places;
     try
     {
-      places = await _lookUp(position.latitude, position.longitude);
+      places = await _lookUp(latitude, longitude);
     }
     catch (e)
     {
@@ -123,9 +142,13 @@ class PlaceFinder
     // NOTE: Several results can come back, the first with a country is the useful one
     for (final place in places)
     {
+      final city = tidy(place.locality) ?? tidy(place.subAdministrativeArea);
+      final suburb = tidy(place.subLocality);
       final found = (
+        // The part of the city, e.g. Etobicoke in Toronto. Not repeated when it's the city
+        suburb: (suburb != null && suburb.toLowerCase() != city?.toLowerCase()) ? suburb : null,
         // Some places have no "locality" (e.g. outside a town), the district is next best
-        city: tidy(place.locality) ?? tidy(place.subAdministrativeArea),
+        city: city,
         state: tidy(place.administrativeArea),
         country: tidy(place.country),
       );

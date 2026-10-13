@@ -3301,6 +3301,15 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _suburbMeta = const VerificationMeta('suburb');
+  @override
+  late final GeneratedColumn<String> suburb = GeneratedColumn<String>(
+    'suburb',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _cityMeta = const VerificationMeta('city');
   @override
   late final GeneratedColumn<String> city = GeneratedColumn<String>(
@@ -3328,6 +3337,28 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     aliasedName,
     true,
     type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pendingLatitudeMeta = const VerificationMeta(
+    'pendingLatitude',
+  );
+  @override
+  late final GeneratedColumn<double> pendingLatitude = GeneratedColumn<double>(
+    'pending_latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _pendingLongitudeMeta = const VerificationMeta(
+    'pendingLongitude',
+  );
+  @override
+  late final GeneratedColumn<double> pendingLongitude = GeneratedColumn<double>(
+    'pending_longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
@@ -3540,9 +3571,12 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     userId,
     merchant,
     total,
+    suburb,
     city,
     state,
     country,
+    pendingLatitude,
+    pendingLongitude,
     date,
     categoryId,
     transactionId,
@@ -3596,6 +3630,12 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         total.isAcceptableOrUnknown(data['total']!, _totalMeta),
       );
     }
+    if (data.containsKey('suburb')) {
+      context.handle(
+        _suburbMeta,
+        suburb.isAcceptableOrUnknown(data['suburb']!, _suburbMeta),
+      );
+    }
     if (data.containsKey('city')) {
       context.handle(
         _cityMeta,
@@ -3612,6 +3652,24 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
       context.handle(
         _countryMeta,
         country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
+    }
+    if (data.containsKey('pending_latitude')) {
+      context.handle(
+        _pendingLatitudeMeta,
+        pendingLatitude.isAcceptableOrUnknown(
+          data['pending_latitude']!,
+          _pendingLatitudeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pending_longitude')) {
+      context.handle(
+        _pendingLongitudeMeta,
+        pendingLongitude.isAcceptableOrUnknown(
+          data['pending_longitude']!,
+          _pendingLongitudeMeta,
+        ),
       );
     }
     if (data.containsKey('date')) {
@@ -3753,6 +3811,10 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.double,
         data['${effectivePrefix}total'],
       ),
+      suburb: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suburb'],
+      ),
       city: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}city'],
@@ -3764,6 +3826,14 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
       country: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}country'],
+      ),
+      pendingLatitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pending_latitude'],
+      ),
+      pendingLongitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pending_longitude'],
       ),
       date: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -3852,9 +3922,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
   final String userId;
   final String? merchant;
   final double? total;
+  final String? suburb;
   final String? city;
   final String? state;
   final String? country;
+  final double? pendingLatitude;
+  final double? pendingLongitude;
   final DateTime? date;
   final String? categoryId;
   final String? transactionId;
@@ -3877,9 +3950,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     required this.userId,
     this.merchant,
     this.total,
+    this.suburb,
     this.city,
     this.state,
     this.country,
+    this.pendingLatitude,
+    this.pendingLongitude,
     this.date,
     this.categoryId,
     this.transactionId,
@@ -3909,6 +3985,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     if (!nullToAbsent || total != null) {
       map['total'] = Variable<double>(total);
     }
+    if (!nullToAbsent || suburb != null) {
+      map['suburb'] = Variable<String>(suburb);
+    }
     if (!nullToAbsent || city != null) {
       map['city'] = Variable<String>(city);
     }
@@ -3917,6 +3996,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     }
     if (!nullToAbsent || country != null) {
       map['country'] = Variable<String>(country);
+    }
+    if (!nullToAbsent || pendingLatitude != null) {
+      map['pending_latitude'] = Variable<double>(pendingLatitude);
+    }
+    if (!nullToAbsent || pendingLongitude != null) {
+      map['pending_longitude'] = Variable<double>(pendingLongitude);
     }
     if (!nullToAbsent || date != null) {
       map['date'] = Variable<DateTime>(date);
@@ -3968,6 +4053,9 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       total: total == null && nullToAbsent
           ? const Value.absent()
           : Value(total),
+      suburb: suburb == null && nullToAbsent
+          ? const Value.absent()
+          : Value(suburb),
       city: city == null && nullToAbsent ? const Value.absent() : Value(city),
       state: state == null && nullToAbsent
           ? const Value.absent()
@@ -3975,6 +4063,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       country: country == null && nullToAbsent
           ? const Value.absent()
           : Value(country),
+      pendingLatitude: pendingLatitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingLatitude),
+      pendingLongitude: pendingLongitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingLongitude),
       date: date == null && nullToAbsent ? const Value.absent() : Value(date),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
@@ -4019,9 +4113,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: serializer.fromJson<String>(json['userId']),
       merchant: serializer.fromJson<String?>(json['merchant']),
       total: serializer.fromJson<double?>(json['total']),
+      suburb: serializer.fromJson<String?>(json['suburb']),
       city: serializer.fromJson<String?>(json['city']),
       state: serializer.fromJson<String?>(json['state']),
       country: serializer.fromJson<String?>(json['country']),
+      pendingLatitude: serializer.fromJson<double?>(json['pendingLatitude']),
+      pendingLongitude: serializer.fromJson<double?>(json['pendingLongitude']),
       date: serializer.fromJson<DateTime?>(json['date']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
@@ -4051,9 +4148,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       'userId': serializer.toJson<String>(userId),
       'merchant': serializer.toJson<String?>(merchant),
       'total': serializer.toJson<double?>(total),
+      'suburb': serializer.toJson<String?>(suburb),
       'city': serializer.toJson<String?>(city),
       'state': serializer.toJson<String?>(state),
       'country': serializer.toJson<String?>(country),
+      'pendingLatitude': serializer.toJson<double?>(pendingLatitude),
+      'pendingLongitude': serializer.toJson<double?>(pendingLongitude),
       'date': serializer.toJson<DateTime?>(date),
       'categoryId': serializer.toJson<String?>(categoryId),
       'transactionId': serializer.toJson<String?>(transactionId),
@@ -4081,9 +4181,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     String? userId,
     Value<String?> merchant = const Value.absent(),
     Value<double?> total = const Value.absent(),
+    Value<String?> suburb = const Value.absent(),
     Value<String?> city = const Value.absent(),
     Value<String?> state = const Value.absent(),
     Value<String?> country = const Value.absent(),
+    Value<double?> pendingLatitude = const Value.absent(),
+    Value<double?> pendingLongitude = const Value.absent(),
     Value<DateTime?> date = const Value.absent(),
     Value<String?> categoryId = const Value.absent(),
     Value<String?> transactionId = const Value.absent(),
@@ -4106,9 +4209,16 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     userId: userId ?? this.userId,
     merchant: merchant.present ? merchant.value : this.merchant,
     total: total.present ? total.value : this.total,
+    suburb: suburb.present ? suburb.value : this.suburb,
     city: city.present ? city.value : this.city,
     state: state.present ? state.value : this.state,
     country: country.present ? country.value : this.country,
+    pendingLatitude: pendingLatitude.present
+        ? pendingLatitude.value
+        : this.pendingLatitude,
+    pendingLongitude: pendingLongitude.present
+        ? pendingLongitude.value
+        : this.pendingLongitude,
     date: date.present ? date.value : this.date,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     transactionId: transactionId.present
@@ -4135,9 +4245,16 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       userId: data.userId.present ? data.userId.value : this.userId,
       merchant: data.merchant.present ? data.merchant.value : this.merchant,
       total: data.total.present ? data.total.value : this.total,
+      suburb: data.suburb.present ? data.suburb.value : this.suburb,
       city: data.city.present ? data.city.value : this.city,
       state: data.state.present ? data.state.value : this.state,
       country: data.country.present ? data.country.value : this.country,
+      pendingLatitude: data.pendingLatitude.present
+          ? data.pendingLatitude.value
+          : this.pendingLatitude,
+      pendingLongitude: data.pendingLongitude.present
+          ? data.pendingLongitude.value
+          : this.pendingLongitude,
       date: data.date.present ? data.date.value : this.date,
       categoryId: data.categoryId.present
           ? data.categoryId.value
@@ -4183,9 +4300,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('suburb: $suburb, ')
           ..write('city: $city, ')
           ..write('state: $state, ')
           ..write('country: $country, ')
+          ..write('pendingLatitude: $pendingLatitude, ')
+          ..write('pendingLongitude: $pendingLongitude, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
@@ -4213,9 +4333,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     userId,
     merchant,
     total,
+    suburb,
     city,
     state,
     country,
+    pendingLatitude,
+    pendingLongitude,
     date,
     categoryId,
     transactionId,
@@ -4242,9 +4365,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.userId == this.userId &&
           other.merchant == this.merchant &&
           other.total == this.total &&
+          other.suburb == this.suburb &&
           other.city == this.city &&
           other.state == this.state &&
           other.country == this.country &&
+          other.pendingLatitude == this.pendingLatitude &&
+          other.pendingLongitude == this.pendingLongitude &&
           other.date == this.date &&
           other.categoryId == this.categoryId &&
           other.transactionId == this.transactionId &&
@@ -4269,9 +4395,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String> userId;
   final Value<String?> merchant;
   final Value<double?> total;
+  final Value<String?> suburb;
   final Value<String?> city;
   final Value<String?> state;
   final Value<String?> country;
+  final Value<double?> pendingLatitude;
+  final Value<double?> pendingLongitude;
   final Value<DateTime?> date;
   final Value<String?> categoryId;
   final Value<String?> transactionId;
@@ -4295,9 +4424,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.userId = const Value.absent(),
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.suburb = const Value.absent(),
     this.city = const Value.absent(),
     this.state = const Value.absent(),
     this.country = const Value.absent(),
+    this.pendingLatitude = const Value.absent(),
+    this.pendingLongitude = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -4322,9 +4454,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     required String userId,
     this.merchant = const Value.absent(),
     this.total = const Value.absent(),
+    this.suburb = const Value.absent(),
     this.city = const Value.absent(),
     this.state = const Value.absent(),
     this.country = const Value.absent(),
+    this.pendingLatitude = const Value.absent(),
+    this.pendingLongitude = const Value.absent(),
     this.date = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.transactionId = const Value.absent(),
@@ -4349,9 +4484,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? userId,
     Expression<String>? merchant,
     Expression<double>? total,
+    Expression<String>? suburb,
     Expression<String>? city,
     Expression<String>? state,
     Expression<String>? country,
+    Expression<double>? pendingLatitude,
+    Expression<double>? pendingLongitude,
     Expression<DateTime>? date,
     Expression<String>? categoryId,
     Expression<String>? transactionId,
@@ -4376,9 +4514,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (userId != null) 'user_id': userId,
       if (merchant != null) 'merchant': merchant,
       if (total != null) 'total': total,
+      if (suburb != null) 'suburb': suburb,
       if (city != null) 'city': city,
       if (state != null) 'state': state,
       if (country != null) 'country': country,
+      if (pendingLatitude != null) 'pending_latitude': pendingLatitude,
+      if (pendingLongitude != null) 'pending_longitude': pendingLongitude,
       if (date != null) 'date': date,
       if (categoryId != null) 'category_id': categoryId,
       if (transactionId != null) 'transaction_id': transactionId,
@@ -4405,9 +4546,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String>? userId,
     Value<String?>? merchant,
     Value<double?>? total,
+    Value<String?>? suburb,
     Value<String?>? city,
     Value<String?>? state,
     Value<String?>? country,
+    Value<double?>? pendingLatitude,
+    Value<double?>? pendingLongitude,
     Value<DateTime?>? date,
     Value<String?>? categoryId,
     Value<String?>? transactionId,
@@ -4432,9 +4576,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       userId: userId ?? this.userId,
       merchant: merchant ?? this.merchant,
       total: total ?? this.total,
+      suburb: suburb ?? this.suburb,
       city: city ?? this.city,
       state: state ?? this.state,
       country: country ?? this.country,
+      pendingLatitude: pendingLatitude ?? this.pendingLatitude,
+      pendingLongitude: pendingLongitude ?? this.pendingLongitude,
       date: date ?? this.date,
       categoryId: categoryId ?? this.categoryId,
       transactionId: transactionId ?? this.transactionId,
@@ -4471,6 +4618,9 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     if (total.present) {
       map['total'] = Variable<double>(total.value);
     }
+    if (suburb.present) {
+      map['suburb'] = Variable<String>(suburb.value);
+    }
     if (city.present) {
       map['city'] = Variable<String>(city.value);
     }
@@ -4479,6 +4629,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     }
     if (country.present) {
       map['country'] = Variable<String>(country.value);
+    }
+    if (pendingLatitude.present) {
+      map['pending_latitude'] = Variable<double>(pendingLatitude.value);
+    }
+    if (pendingLongitude.present) {
+      map['pending_longitude'] = Variable<double>(pendingLongitude.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -4546,9 +4702,12 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('userId: $userId, ')
           ..write('merchant: $merchant, ')
           ..write('total: $total, ')
+          ..write('suburb: $suburb, ')
           ..write('city: $city, ')
           ..write('state: $state, ')
           ..write('country: $country, ')
+          ..write('pendingLatitude: $pendingLatitude, ')
+          ..write('pendingLongitude: $pendingLongitude, ')
           ..write('date: $date, ')
           ..write('categoryId: $categoryId, ')
           ..write('transactionId: $transactionId, ')
@@ -7058,9 +7217,12 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       required String userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> suburb,
       Value<String?> city,
       Value<String?> state,
       Value<String?> country,
+      Value<double?> pendingLatitude,
+      Value<double?> pendingLongitude,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
@@ -7086,9 +7248,12 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String?> merchant,
       Value<double?> total,
+      Value<String?> suburb,
       Value<String?> city,
       Value<String?> state,
       Value<String?> country,
+      Value<double?> pendingLatitude,
+      Value<double?> pendingLongitude,
       Value<DateTime?> date,
       Value<String?> categoryId,
       Value<String?> transactionId,
@@ -7177,6 +7342,11 @@ class $$ReceiptsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get suburb => $composableBuilder(
+    column: $table.suburb,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get city => $composableBuilder(
     column: $table.city,
     builder: (column) => ColumnFilters(column),
@@ -7189,6 +7359,16 @@ class $$ReceiptsTableFilterComposer
 
   ColumnFilters<String> get country => $composableBuilder(
     column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7344,6 +7524,11 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get suburb => $composableBuilder(
+    column: $table.suburb,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get city => $composableBuilder(
     column: $table.city,
     builder: (column) => ColumnOrderings(column),
@@ -7356,6 +7541,16 @@ class $$ReceiptsTableOrderingComposer
 
   ColumnOrderings<String> get country => $composableBuilder(
     column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7502,6 +7697,9 @@ class $$ReceiptsTableAnnotationComposer
   GeneratedColumn<double> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
 
+  GeneratedColumn<String> get suburb =>
+      $composableBuilder(column: $table.suburb, builder: (column) => column);
+
   GeneratedColumn<String> get city =>
       $composableBuilder(column: $table.city, builder: (column) => column);
 
@@ -7510,6 +7708,16 @@ class $$ReceiptsTableAnnotationComposer
 
   GeneratedColumn<String> get country =>
       $composableBuilder(column: $table.country, builder: (column) => column);
+
+  GeneratedColumn<double> get pendingLatitude => $composableBuilder(
+    column: $table.pendingLatitude,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get pendingLongitude => $composableBuilder(
+    column: $table.pendingLongitude,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
@@ -7650,9 +7858,12 @@ class $$ReceiptsTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> suburb = const Value.absent(),
                 Value<String?> city = const Value.absent(),
                 Value<String?> state = const Value.absent(),
                 Value<String?> country = const Value.absent(),
+                Value<double?> pendingLatitude = const Value.absent(),
+                Value<double?> pendingLongitude = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
@@ -7676,9 +7887,12 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                suburb: suburb,
                 city: city,
                 state: state,
                 country: country,
+                pendingLatitude: pendingLatitude,
+                pendingLongitude: pendingLongitude,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,
@@ -7704,9 +7918,12 @@ class $$ReceiptsTableTableManager
                 required String userId,
                 Value<String?> merchant = const Value.absent(),
                 Value<double?> total = const Value.absent(),
+                Value<String?> suburb = const Value.absent(),
                 Value<String?> city = const Value.absent(),
                 Value<String?> state = const Value.absent(),
                 Value<String?> country = const Value.absent(),
+                Value<double?> pendingLatitude = const Value.absent(),
+                Value<double?> pendingLongitude = const Value.absent(),
                 Value<DateTime?> date = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
@@ -7730,9 +7947,12 @@ class $$ReceiptsTableTableManager
                 userId: userId,
                 merchant: merchant,
                 total: total,
+                suburb: suburb,
                 city: city,
                 state: state,
                 country: country,
+                pendingLatitude: pendingLatitude,
+                pendingLongitude: pendingLongitude,
                 date: date,
                 categoryId: categoryId,
                 transactionId: transactionId,

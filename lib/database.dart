@@ -145,10 +145,17 @@ class Receipts extends Table
   // ReceiptImageStore), because a file path only means something on the device that saved it
   TextColumn get merchant => text().nullable()();
   RealColumn get total => real().nullable()();
-  // Where the receipt is from. Free text as the user typed it (filters ignore capitals)
+  // Where the receipt is from. Free text as the user typed it (filters ignore capitals).
+  // The suburb is the part of the city, e.g. Etobicoke in Toronto
+  TextColumn get suburb => text().nullable()();
   TextColumn get city => text().nullable()();
   TextColumn get state => text().nullable()();
   TextColumn get country => text().nullable()();
+  // NOTE: Where the photo was taken, from its EXIF data, ONLY while it waits to be turned into
+  // a place name. Windows can't do that itself, so the phone does it on its next sync and then
+  // clears these. The app never keeps coordinates once the place has a name
+  RealColumn get pendingLatitude => real().nullable()();
+  RealColumn get pendingLongitude => real().nullable()();
   DateTimeColumn get date => dateTime().nullable()();
   TextColumn get categoryId => text().nullable().references(Categories, #id)();
   // Set once the receipt has been turned into a transaction, so it isn't added twice
@@ -223,8 +230,8 @@ class AppDatabase extends _$AppDatabase
   @override
   // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
   // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting, v7 cropping,
-  // v8 the receipt's location
-  int get schemaVersion => 8;
+  // v8 the receipt's location, v9 the suburb and coordinates waiting to be named
+  int get schemaVersion => 9;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -296,6 +303,12 @@ class AppDatabase extends _$AppDatabase
           await m.addColumn(receipts, receipts.city);
           await m.addColumn(receipts, receipts.state);
           await m.addColumn(receipts, receipts.country);
+        }
+        if (from < 9)
+        {
+          await m.addColumn(receipts, receipts.suburb);
+          await m.addColumn(receipts, receipts.pendingLatitude);
+          await m.addColumn(receipts, receipts.pendingLongitude);
         }
       }
     },

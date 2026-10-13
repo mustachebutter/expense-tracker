@@ -119,7 +119,7 @@ class ReceiptScanService
 
     // Same idea for the location: a shop you've been to before is probably in the same place.
     // Only when the receipt has no location yet, so a typed one is never replaced
-    final hasLocation = latest.city != null || latest.state != null || latest.country != null;
+    final hasLocation = latest.suburb != null || latest.city != null || latest.state != null || latest.country != null;
     final sameShop = (hasLocation || merchant == null)
       ? null
       : await _db.receiptsDao.locationUsedBefore(merchant, userId, exceptId: latest.id);
@@ -129,6 +129,7 @@ class ReceiptScanService
       total: Value(pick(latest.total, parsed.total)),
       date: Value(pick(latest.date, parsed.date)),
       categoryId: Value(categoryId),
+      suburb: Value(latest.suburb ?? sameShop?.suburb),
       city: Value(latest.city ?? sameShop?.city),
       state: Value(latest.state ?? sameShop?.state),
       country: Value(latest.country ?? sameShop?.country),

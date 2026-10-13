@@ -119,7 +119,7 @@ void main()
 
       final place = await finder.findCurrentPlace();
 
-      expect(place, (city: "Hanoi", state: "Hà Nội", country: "Vietnam"));
+      expect(place, (suburb: null, city: "Hanoi", state: "Hà Nội", country: "Vietnam"));
       expect(plugin.currentAsked, 0);
     });
 
@@ -156,7 +156,7 @@ void main()
         Placemark(subAdministrativeArea: "Ba Vì District", administrativeArea: "Hà Nội", country: "Vietnam"),
       ];
 
-      expect(await finder.findCurrentPlace(), (city: "Ba Vì District", state: "Hà Nội", country: "Vietnam"));
+      expect(await finder.findCurrentPlace(), (suburb: null, city: "Ba Vì District", state: "Hà Nội", country: "Vietnam"));
     });
   });
 }

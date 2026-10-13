@@ -8,6 +8,7 @@ import 'package:expense_tracker/providers/receipt_providers.dart';
 import 'package:expense_tracker/providers/transaction_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 import '../helpers/fake_receipts.dart';
 import '../helpers/test_database.dart';
@@ -70,6 +71,15 @@ void main()
       expect(saved.merchant, isNull);
       expect(saved.scanStatus, ReceiptScanStatus.waiting, reason: "every new photo is queued for the scanner");
       expect(saved.isSynced, isFalse);
+    });
+
+    test("addFromImage stores a shrunk copy of a big photo", () async {
+      final bigPhoto = img.encodePng(img.Image(width: 4000, height: 3000));
+
+      final receipt = await actions().addFromImage(bigPhoto);
+
+      final stored = img.decodeImage(images.images[receipt.id]!)!;
+      expect((stored.width, stored.height), (2000, 1500));
     });
 
     test("update follows the sync rules and refuses another user's receipt", () async {

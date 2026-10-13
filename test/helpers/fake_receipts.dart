@@ -9,6 +9,7 @@ import 'package:expense_tracker/providers/receipt_crop_providers.dart';
 import 'package:expense_tracker/services/place_finder.dart';
 import 'package:expense_tracker/services/receipt_crop.dart';
 import 'package:expense_tracker/services/receipt_images.dart';
+import 'package:expense_tracker/services/receipt_photo_shrinker.dart';
 import 'package:expense_tracker/services/receipt_scanner.dart';
 
 import 'package:image/image.dart' as img;
@@ -175,8 +176,24 @@ class FakePlaceFinder implements PlaceFinder
   FoundPlace place;
   PlaceProblem? problem;
   var settingsOpened = 0;
+  // Coordinates it was asked to name (from photos), and what it answers for them
+  final List<(double, double)> namedCoordinates = [];
+  FoundPlace coordinatesPlace = (suburb: "Etobicoke", city: "Toronto", state: "Ontario", country: "Canada");
+  PlaceProblem? coordinatesProblem;
 
-  FakePlaceFinder({this.isAvailable = true, this.place = (city: "Hanoi", state: "Hà Nội", country: "Vietnam"), this.problem});
+  FakePlaceFinder({
+    this.isAvailable = true,
+    this.place = (suburb: null, city: "Hanoi", state: "Hà Nội", country: "Vietnam"),
+    this.problem,
+  });
+
+  @override
+  Future<FoundPlace> nameCoordinates(double latitude, double longitude) async
+  {
+    namedCoordinates.add((latitude, longitude));
+    if (coordinatesProblem != null) throw PlaceNotFound(coordinatesProblem!);
+    return coordinatesPlace;
+  }
 
   @override
   Future<FoundPlace> findCurrentPlace() async
@@ -187,4 +204,20 @@ class FakePlaceFinder implements PlaceFinder
 
   @override
   Future<void> openSettings() async => settingsOpened++;
+}
+
+// Hands photos straight back, as if their EXIF said [details]
+class FakeReceiptPhotoShrinker implements ReceiptPhotoShrinker
+{
+  PhotoDetails details;
+  final List<Uint8List> prepared = [];
+
+  FakeReceiptPhotoShrinker({this.details = noPhotoDetails});
+
+  @override
+  Future<PreparedPhoto> prepare(Uint8List photo) async
+  {
+    prepared.add(photo);
+    return (bytes: photo, details: details);
+  }
 }

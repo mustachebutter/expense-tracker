@@ -104,12 +104,26 @@ class ReceiptsDao extends BaseDao<Receipts, Receipt> with _$ReceiptsDaoMixin
           t.userId.equals(userId) &
           t.isDeleted.equals(false) &
           t.merchant.lower().equals(merchant.trim().toLowerCase()) &
-          (t.city.isNotNull() | t.state.isNotNull() | t.country.isNotNull()) &
+          (t.suburb.isNotNull() | t.city.isNotNull() | t.state.isNotNull() | t.country.isNotNull()) &
           (exceptId == null ? const Constant(true) : t.id.equals(exceptId).not())
         )
         ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
         ..limit(1)
     ).getSingleOrNull();
+  }
+
+  // Receipts whose photo had GPS coordinates that still need turning into a place name
+  Future<List<Receipt>> getWaitingForPlaceName(String userId)
+  {
+    return (
+      select(receipts)
+        ..where((t) =>
+          t.userId.equals(userId) &
+          t.isDeleted.equals(false) &
+          t.pendingLatitude.isNotNull() &
+          t.pendingLongitude.isNotNull()
+        )
+    ).get();
   }
 
   // NOTE: Only touches image_uploaded (plus the sync columns), so it can't undo an edit

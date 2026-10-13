@@ -15,6 +15,7 @@ const Map<int, List<String>> receiptColumnsAddedIn = {
   6: ["image_quarter_turns", "split_people", "split_amount"],
   7: ["crop_corners"],
   8: ["city", "state", "country"],
+  9: ["suburb", "pending_latitude", "pending_longitude"],
 };
 
 Future<void> dropReceiptColumnsAfter(AppDatabase db, int version) async
@@ -223,5 +224,27 @@ void main()
     final receipt = (await db.receiptsDao.getAll()).single;
     expect((receipt.merchant, receipt.cropCorners), ("Kept", "0,0,1,0,1,1,0,1"));
     expect((receipt.city, receipt.state, receipt.country), (null, null, null));
+  });
+
+  test("upgrading a version 8 database adds suburbs to existing receipts", () async {
+    final folder = Directory.systemTemp.createTempSync("expense_tracker_test");
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final file = File("${folder.path}/db.sqlite");
+
+    final oldDb = AppDatabase.forTesting(NativeDatabase(file));
+    await oldDb.into(oldDb.receipts).insert(ReceiptsCompanion.insert(
+      userId: "user-a",
+      city: const Value("Toronto"),
+      country: const Value("Canada"),
+    ));
+    await dropReceiptColumnsAfter(oldDb, 8);
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(db.close);
+
+    final receipt = (await db.receiptsDao.getAll()).single;
+    expect((receipt.city, receipt.country), ("Toronto", "Canada"));
+    expect((receipt.suburb, receipt.pendingLatitude, receipt.pendingLongitude), (null, null, null));
   });
 }

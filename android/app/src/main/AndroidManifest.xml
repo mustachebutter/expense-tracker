@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- "Use my location" on a receipt. Coarse (roughly which town) is all it needs -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="expense_tracker"
         android:name="${applicationName}"

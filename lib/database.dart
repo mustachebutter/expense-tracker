@@ -127,9 +127,10 @@ class Investments extends Table
 
 enum ReceiptScanStatus
 {
-  // Nobody has tried to read it yet, fields are filled in by hand (the only state until OCR exists)
+  // Receipts added before scanning existed. They're filled in by hand
   notScanned,
-  // Queued for the scanner (ML Kit on a phone, or the self-hosted model)
+  // Queued for the scanner. On a device that can't scan (e.g. Windows with ML Kit), it waits
+  // until a device that can (the phone) syncs, downloads the photo and reads it
   waiting,
   scanned,
   failed,
@@ -144,11 +145,29 @@ class Receipts extends Table
   // ReceiptImageStore), because a file path only means something on the device that saved it
   TextColumn get merchant => text().nullable()();
   RealColumn get total => real().nullable()();
+  // Where the receipt is from. Free text as the user typed it (filters ignore capitals)
+  TextColumn get city => text().nullable()();
+  TextColumn get state => text().nullable()();
+  TextColumn get country => text().nullable()();
   DateTimeColumn get date => dateTime().nullable()();
   TextColumn get categoryId => text().nullable().references(Categories, #id)();
   // Set once the receipt has been turned into a transaction, so it isn't added twice
   TextColumn get transactionId => text().nullable().references(Transactions, #id)();
   IntColumn get scanStatus => intEnum<ReceiptScanStatus>().withDefault(const Constant(0))();
+  // True once the photo is in Supabase Storage. Other devices download it when they see this
+  BoolColumn get imageUploaded => boolean().withDefault(const Constant(false))();
+  // Quarter turns clockwise (0-3) to show the photo upright. The photo file itself is never
+  // changed, so rotating syncs as a number instead of re-uploading the whole photo
+  IntColumn get imageQuarterTurns => integer().withDefault(const Constant(0))();
+  // The receipt's four corners in the photo (see receipt_crop.dart), to cut it out of the
+  // background. Like the rotation, the photo itself is never changed, every device makes
+  // its own cropped copy from these. Null shows the whole photo
+  TextColumn get cropCorners => text().nullable()();
+
+  // Splitting the bill with friends. An equal split stores how many people (you included),
+  // a custom split stores your own amount. Both empty: you paid all of it
+  IntColumn get splitPeople => integer().nullable()();
+  RealColumn get splitAmount => real().nullable()();
 
   // Favourites are the receipts pinned on the board
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
@@ -202,8 +221,10 @@ class AppDatabase extends _$AppDatabase
   }
 
   @override
-  // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts
-  int get schemaVersion => 4;
+  // v3 changes no tables, it only runs _repairTransactionTypes once. v4 adds receipts,
+  // v5 adds receipts.image_uploaded, v6 adds receipt rotation and splitting, v7 cropping,
+  // v8 the receipt's location
+  int get schemaVersion => 8;
 
   // NOTE: The Add Transaction form used to save every transaction as an expense, even in an
   // income category. This gives those rows their category's type. Fixed transactions
@@ -251,7 +272,31 @@ class AppDatabase extends _$AppDatabase
 
       if (from < 4)
       {
+        // NOTE: Created with today's columns, so a v3 database skips the receipt steps below
         await m.createTable(receipts);
+      }
+      else
+      {
+        if (from < 5)
+        {
+          await m.addColumn(receipts, receipts.imageUploaded);
+        }
+        if (from < 6)
+        {
+          await m.addColumn(receipts, receipts.imageQuarterTurns);
+          await m.addColumn(receipts, receipts.splitPeople);
+          await m.addColumn(receipts, receipts.splitAmount);
+        }
+        if (from < 7)
+        {
+          await m.addColumn(receipts, receipts.cropCorners);
+        }
+        if (from < 8)
+        {
+          await m.addColumn(receipts, receipts.city);
+          await m.addColumn(receipts, receipts.state);
+          await m.addColumn(receipts, receipts.country);
+        }
       }
     },
   );

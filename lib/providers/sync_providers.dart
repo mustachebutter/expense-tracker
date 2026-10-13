@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart' show TableInfo, Variable;
 import 'package:expense_tracker/providers/core_providers.dart';
+import 'package:expense_tracker/providers/receipt_scan_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // NOTE: This only knows if the device has a network connection (wifi, mobile, ethernet),
@@ -114,10 +115,28 @@ class SyncController extends Notifier<SyncState>
     }
   }
 
+  // Reads receipts that are waiting, if this device can. Never fails the sync
+  Future<void> _scanWaitingReceipts() async
+  {
+    try
+    {
+      await ref.read(receiptScanServiceProvider).scanWaiting();
+    }
+    catch (e)
+    {
+      print("❌ Scanning waiting receipts failed: $e");
+    }
+  }
+
   Future<void> _run() async
   {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
+
+    // NOTE: Scanning is local, so it happens even offline. The scanned fields go up with
+    // this sync, or the next one
+    await _scanWaitingReceipts();
+    if (!ref.mounted) return;
 
     if (!ref.read(isOnlineProvider))
     {
@@ -131,6 +150,9 @@ class SyncController extends Notifier<SyncState>
       await ref.read(syncEngineProvider).runSync(userId);
       if (!ref.mounted) return;
       state = state.copyWith(status: SyncStatus.idle, lastSyncedAt: DateTime.now());
+
+      // Photos imported on another device (e.g. Windows) may have just arrived
+      await _scanWaitingReceipts();
     }
     catch (e)
     {

@@ -80,6 +80,37 @@ void main()
     });
   }
 
+  for (final name in ["light", "dark"])
+  {
+    test("switches, checkboxes, spinners, the cursor and the date picker are visible on the $name theme", () {
+      final theme = name == "light" ? lightTheme : darkTheme;
+      // Dialogs and screens are drawn on the surface color
+      final background = theme.colorScheme.surface;
+      const on = {WidgetState.selected};
+      const off = <WidgetState>{};
+
+      // NOTE: Regression check. These used colorScheme.primary, which is the background
+      // color in these themes, so a ticked checkbox or an "on" switch was invisible.
+      // 3:1 is the WCAG minimum for controls, 4.5:1 for text
+      final checkboxFill = theme.checkboxTheme.fillColor!.resolve(on)!;
+      expect(contrastRatio(checkboxFill, background), greaterThanOrEqualTo(3), reason: "ticked checkbox");
+      expect(contrastRatio(theme.checkboxTheme.checkColor!.resolve(on)!, checkboxFill), greaterThanOrEqualTo(4.5), reason: "the tick");
+      expect(contrastRatio(theme.checkboxTheme.side!.color, background), greaterThanOrEqualTo(3), reason: "empty checkbox");
+
+      final switchTrack = theme.switchTheme.trackColor!.resolve(on)!;
+      expect(contrastRatio(switchTrack, background), greaterThanOrEqualTo(3), reason: "switch that's on");
+      expect(contrastRatio(theme.switchTheme.thumbColor!.resolve(on)!, switchTrack), greaterThanOrEqualTo(3), reason: "its knob");
+      expect(contrastRatio(theme.switchTheme.thumbColor!.resolve(off)!, background), greaterThanOrEqualTo(3), reason: "switch that's off");
+
+      expect(contrastRatio(theme.progressIndicatorTheme.color!, background), greaterThanOrEqualTo(3), reason: "spinner");
+      expect(contrastRatio(theme.textSelectionTheme.cursorColor!, background), greaterThanOrEqualTo(3), reason: "text cursor");
+
+      final selectedDay = theme.datePickerTheme.dayBackgroundColor!.resolve(on)!;
+      expect(contrastRatio(selectedDay, background), greaterThanOrEqualTo(3), reason: "picked date");
+      expect(contrastRatio(theme.datePickerTheme.dayForegroundColor!.resolve(on)!, selectedDay), greaterThanOrEqualTo(4.5), reason: "picked date's number");
+    });
+  }
+
   test("plain Colors.green would NOT have been readable on the light theme", () {
     // This is why the theme uses darker shades instead of the obvious choice
     expect(contrastRatio(Colors.green, lightTheme.colorScheme.primary), lessThan(4.5));

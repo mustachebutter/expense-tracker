@@ -82,6 +82,8 @@ void main()
     engine.gate = Completer<void>();
 
     final first = controller.syncNow();
+    // NOTE: A sync first checks for receipts to scan, let that finish before looking
+    await pumpEventQueue();
     expect(container.read(syncControllerProvider).status, SyncStatus.syncing);
 
     // Three more requests arrive while the first sync is still running...

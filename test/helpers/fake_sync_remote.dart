@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:expense_tracker/sync_engine.dart';
 
 // NOTE: A pretend Supabase that lives in memory. It behaves like the real tables after
@@ -12,8 +14,12 @@ class FakeSyncRemote implements SyncRemote
   // Every fetchChanges call, so tests can check the cursor was used
   final List<({String table, String? since})> fetchCalls = [];
 
-  // Tables listed here throw like a network error would
+  // Tables listed here throw like a network error would. "receipt_images" makes photo
+  // uploads and downloads fail
   final Set<String> failingTables = {};
+
+  // Photos in file storage, keyed "<userId>/<receiptId>" like the real bucket
+  final Map<String, Uint8List> receiptImages = {};
 
   // Runs in the middle of the next upsert to [table]. Lets a test do something
   // "while the upload is in flight", like the user editing the same row
@@ -58,6 +64,28 @@ class FakeSyncRemote implements SyncRemote
     {
       seed(table, row);
     }
+  }
+
+  @override
+  Future<void> uploadReceiptImage(String userId, String receiptId, Uint8List bytes) async
+  {
+    if (failingTables.contains("receipt_images")) throw Exception("Network error uploading a photo");
+    receiptImages["$userId/$receiptId"] = bytes;
+  }
+
+  @override
+  Future<Uint8List> downloadReceiptImage(String userId, String receiptId) async
+  {
+    if (failingTables.contains("receipt_images")) throw Exception("Network error downloading a photo");
+    final bytes = receiptImages["$userId/$receiptId"];
+    if (bytes == null) throw Exception("Object not found");
+    return bytes;
+  }
+
+  @override
+  Future<void> removeReceiptImage(String userId, String receiptId) async
+  {
+    receiptImages.remove("$userId/$receiptId");
   }
 
   @override
